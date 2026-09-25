@@ -249,8 +249,8 @@ shMonsterIlk MonIlks[kMonNumberOf] =
          '@',
          kGreen,
          kBlack,
-         0,
-         -1
+         1,
+         110
       },
       shCreature::kWander,
       shCreature::kHostile,
@@ -6393,8 +6393,8 @@ shMonsterIlk MonIlks[kMonNumberOf] =
          'o',
          kRed,
          kBlack,
-         0,
-         -1
+         2,
+         110
       },
       shCreature::kWander,
       shCreature::kHostile,

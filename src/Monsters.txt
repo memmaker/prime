@@ -203,7 +203,8 @@ MonsterIlk Ghoul
  strategy           shCreature::kWander
  sym                '@'
  color              kGreen
- tile_col           0
+ tile_row           110 /* RVIP: RLTiles sprite, port/mktiles.py */
+ tile_col           1
  MATK(1,Punch,3)
  MATK(2,Kick,1)
  MATK(3,HeadButt,1)
@@ -1178,7 +1179,8 @@ MonsterIlk AlienEmbryo
  baselev            5
  sym                'o'
  color              kRed
- tile_col           0
+ tile_row           110 /* RVIP: RLTiles sprite, port/mktiles.py */
+ tile_col           2
 }
 
 MonsterIlk Radbug

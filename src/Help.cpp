@@ -125,14 +125,23 @@ shInterface::showHelp ()
     hlp.add (strdup ("   You can instruct your character to continuously move in a direction"));
     hlp.add (strdup ("   until something interesting is encountered or the movement is disturbed."));
     hlp.add (strdup ("   This is called \"gliding\".  Press glide key followed by a direction to glide."));
+    /* RVIP additions. */
+    snprintf (buf, LINEMAX, "   @F%s@H  Explore automatically.  Stops for monsters, messages and any key.",
+        getKeyForCommand (kExplore));
+    hlp.add (strdup (buf));
+    snprintf (buf, LINEMAX, "   @F%s@H / @F%s@H  Off the stairs: walk to the nearest known stairs and take them.",
+        getKeyForCommand (kMoveUp), getKeyForCommand (kMoveDown));
+    hlp.add (strdup (buf));
+    snprintf (buf, LINEMAX, "   @F%s@H  Menu of all commands.  @Fi@H: inventory with a cursor and item menus.",
+        getKeyForCommand (kCmdMenu));
+    hlp.add (strdup (buf));
+    hlp.add (strdup ("   Lists: @F8 2@H move, @F5@H/@FEnter@H choose, @F+@H main action, @F-@H drop, @F*@H examine."));
     hlp.add (strdup (""));
 
     static const char meta_com[][LINEMAX] =
     {
 "       @CMETA COMMANDS@H",
-"",
-"     @FF3@H  Access Necklace of the Eye options (only in graphical mode)",
-"@Fleft alt@H Hold to show ASCII map (only in graphical mode)"
+""
     };
     const int metalin = sizeof (meta_com) / sizeof (char [LINEMAX]);
     for (int i = 0; i < metalin; ++i) {

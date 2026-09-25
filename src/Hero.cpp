@@ -546,6 +546,8 @@ listDiscoveries ()
 int
 shCreature::listInventory ()
 {
+    extern int rvipInventory ();
+    if (!GameOver and isHero ())  return rvipInventory (); /* RVIP */
     if (!mInventory->count ()) {
         msg ("You aren't carrying anything!");
     } else {
@@ -1800,7 +1802,7 @@ shCreature::playerControl ()
 
     Hero.mBusy = 0;
     elapsed = 0;
-    shInterface::Command cmd = I->getCommand ();
+    shInterface::Command cmd = I->rvipCommand (); /* RVIP: explore etc. */
 
     dx = 0;
     dy = 0;

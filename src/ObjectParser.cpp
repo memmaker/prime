@@ -336,7 +336,7 @@ makePluralNH (const char *oldstr)
 	const char vowels[] = "aeiouAEIOU";
 	/* Note: cannot use strcmpi here -- it'd give MATZot, CAVEMeN,... */
 	char *spot;
-	char buf[SHBUFLEN];
+	static char buf[SHBUFLEN]; /* was a local returned to the caller */
 	char *str = buf;
 	const char *excess = (char *)0;
 	int len;
@@ -392,11 +392,11 @@ makePluralNH (const char *oldstr)
 
 	/* Same singular and plural; mostly Japanese words */
 	if ((len == 2 and !strcmp(str, "bo")) or
-	    (len >= 4 and (!strcmp(spot-4, "teef") or
-            !strcmp (spot-4, "fuel") or
-	    (len >= 5 and (!strcmp(spot-5, "sheep") or
-			!strcmp (spot-5, "ninja") or
-			!strcmp (spot-5, "ronin") or
+	    (len >= 4 and (!strcmp(spot-3, "teef") or
+            !strcmp (spot-3, "fuel") or
+	    (len >= 5 and (!strcmp(spot-4, "sheep") or
+			!strcmp (spot-4, "ninja") or
+			!strcmp (spot-4, "ronin") or
 		(len >= 7 and (!strcmp(spot-7, "shuriken") or
             !strcmp (spot-7, "melnorme"))))))))
 		goto bottom;

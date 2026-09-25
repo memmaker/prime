@@ -26,6 +26,8 @@ int maxi (int x, int y);
 #define SHBUFLEN 256
 
 char *GetBuf ();
+void GetBufSave (char *save, int *n);   /* RVIP (port/XUI.cpp) */
+void GetBufRestore (const char *save, int n);
 
 #define YOUR(_X) ((_X)->your())
 #define THE(_X) ((_X)->the())

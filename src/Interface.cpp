@@ -104,6 +104,8 @@ shInterface::vp (const char *format, va_list ap)
 {
     const int buflen = LINELEN;
     char strbuf[buflen];
+    extern int RvipMsgs; /* RVIP: explore stops on new messages */
+    RvipMsgs++;
     /* Is --More-- needed? */
     if ((!mNoNewline and 6 == ++mLogSCount) or mPause) {
         doMorePrompt ();
@@ -563,6 +565,8 @@ shInterface::readKeybindings (const char *fname, int n_keys, const shNameToKey K
         {"wear", kWear},
         {"wield", kWield},
         {"zap ray gun", kZapRayGun},
+        {"explore", kExplore},
+        {"command menu", kCmdMenu},
         {"debug command", kBOFHPower}
     };
     const int n_commands = sizeof (CommandNames) / sizeof (shCommandName);
@@ -673,6 +677,9 @@ shInterface::readKeybindings (const char *fname, int n_keys, const shNameToKey K
             errors > 1 ? "s" : "", keymapname);
     }
     fclose (keymap);
+    /* RVIP: explore on X and the command menu on Enter, unless taken. */
+    if (!keyToCommand ('X'))  assign ('X', kExplore);
+    assign (13, kCmdMenu); /* Return (Ctrl+J = 10 stays a keymap key) */
 }
 
 shMenu *

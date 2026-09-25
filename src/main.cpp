@@ -33,11 +33,15 @@
 #include "Util.h"
 #include "Map.h"
 #include "Interface.h"
+#ifdef PRIME_X11
+#include "../port/XUI.h"
+#endif
 #include "Monster.h"
 #include "Hero.h"
 #include "Game.h"
 
 shInterface *I;
+int UIClickWin = -1, UIClickRow; /* RVIP: see KEY_CLICK */
 shMapLevel *Level;
 bool BOFH = false;
 char UserDir[PRIME_PATH_LENGTH];
@@ -195,7 +199,9 @@ main (int argc, char **argv)
         I = startNotEye (argc, argv);
     } else
 #endif
-#ifndef USE_FPC
+#ifdef PRIME_X11
+        I = startX11 ();
+#elif !defined (USE_FPC)
         I = startNCurses ();
 #else
         I = startCrt ();

@@ -6,6 +6,10 @@
 #include "Menu.h"
 
 extern bool BOFH;
+/* RVIP: a mouse click on a pop-up row arrives as this key; the frontend
+   sets the window and row (relative to the window) it hit. */
+#define KEY_CLICK 0x12F
+extern int UIClickWin, UIClickRow;
 extern void mainLoop (void);
 
 struct shMenu;
@@ -96,6 +100,9 @@ struct shInterface
         kWear,
         kWield,
         kZapRayGun,
+
+        kExplore,   /* RVIP (Rvip.cpp) */
+        kCmdMenu,
 
         kBOFHPower, /* Debug commands. */
 
@@ -218,6 +225,13 @@ struct shInterface
     shMenu *newMenu (const char *prompt, int flags);
     virtual void runMainLoop () = 0; /* Calls the game loop. */
 
+    /* RVIP (Rvip.cpp) */
+    Command rvipCommand ();
+    Command rvipStep ();
+    Command rvipMenu ();
+    int keyFor (Command c);
+    void pushKey (int k);
+
  protected:
     /* Functions that isolate whatever screen and keyboard handling
        each inheriting class employs. */
@@ -329,11 +343,14 @@ struct shMenu
     int mHeight;     /* Viewable rows. */
     int mWidth;      /* Viewable cols. */
     int mOffset;     /* First choice. */
+    int mCursor;     /* RVIP: highlighted choice, -1 none. */
     int mLast;       /* Last choice. */
     int mNum;        /* Holds number of items to select. */
     int mDone;
 
     void select (int i1, int i2, int action, shObjectType t = kUninitialized);
+    bool selectable (int i);
+    int firstSelectable ();
     shMenuChoice *getResultChoice ();
     const char **prepareHelp (int *lines);
     bool interpretKey (int key, shInterface::Command cmd = shInterface::kNoCommand);

@@ -1,0 +1,10 @@
+# RVIP port build output and local game files
+/prime
+/port/obj/
+/port/tiles.rgba
+/user/save/
+/user/config.txt
+/user/dbg.*.txt
+/user/mortem.txt
+/score/
+/port/tiles.png

@@ -14,3 +14,9 @@
 /* Default to I/O handled by Free Pascal libs. NCurses proved to be unreliable on newest Mac OS X for unknwon reason. */
 //#define USE_FPC
 /* When recompiling delete: main.o */
+/* RVIP: let AddressSanitizer report crashes itself. */
+#if defined (__has_feature)
+#if __has_feature (address_sanitizer)
+#undef CATCH_SIGSEGV
+#endif
+#endif

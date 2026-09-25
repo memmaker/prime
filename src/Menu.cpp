@@ -33,6 +33,7 @@ shMenu::shMenu (const char *prompt, int flags)
     mFlags = flags;
     mResultIterator = 0;
     mOffset = 0;
+    mCursor = -1;
     mDone = 0;
     mNum = 0;
     mObjTypeHack = kMaxObjectType;
@@ -325,7 +326,9 @@ shMenu::prepareHelp (int *lines)
     const char **text = (const char **) calloc (4, sizeof (char *));
     if (mFlags & kNoHelp)  return text;
 
-    text[(*lines)++] = navigation;
+    /* RVIP: pick menus have a cursor. */
+    text[(*lines)++] = (mFlags & kNoPick) ? navigation :
+"8 2 ARROWS  move   5 ENTER  choose   PAGE UP/DOWN  scroll   SPACE ESCAPE  finish";
 
     if ((mFlags & kCountAllowed) and !mHelpMode) {
         text[(*lines)++] = count;
@@ -694,6 +697,22 @@ shTextViewer::show (bool bottom)
 }
 
 
+/* RVIP: rows the cursor can stop on. */
+bool
+shMenu::selectable (int i)
+{
+    shMenuChoice *c = mChoices.get (i);
+    return c->mLetter >= 0 and c->mLetter != ' ' and c->mCount >= 0;
+}
+
+int
+shMenu::firstSelectable ()
+{
+    for (int i = 0; i < mChoices.count (); ++i)
+        if (selectable (i)) return i;
+    return -1;
+}
+
 void
 shMenu::accumulateResults ()
 {
@@ -744,6 +763,8 @@ shMenu::accumulateResults ()
 
     /* -2 lines to make space for header and --End-- or similar. */
     mLast = mini (mOffset + mItemHeight - 2, mChoices.count ());
+    if (!(mFlags & kNoPick) and mCursor < 0)
+        mCursor = firstSelectable ();
     while (1) { /* Menu loop. */
         I->clearWin (menuwin);
         /* Menu header: */
@@ -835,6 +856,12 @@ shMenu::accumulateResults ()
                               item->mLetter, item->mText);
                 }
             }
+            if (i == mCursor) { /* RVIP cursor: whole row reversed */
+                I->setWinColor (menuwin, kBlack, kWhite);
+                int l = strlen (buf);
+                while (l < width - 1 && l < 99) buf[l++] = ' ';
+                buf[l] = 0;
+            }
             I->winOutXY (menuwin, 0, 1 + i - mOffset, "%s", buf);
             I->setWinColor (menuwin, kGray, kBlack);
         }
@@ -846,6 +873,46 @@ shMenu::accumulateResults ()
             if (helplines)  showHelp ();
             shInterface::SpecialKey spk;
             int key = I->getSpecialChar (&spk);
+
+            /* RVIP: cursor in pick menus. 8/2 or arrows move it, 5 or
+               Enter choose (menus taking counts keep digits as counts). */
+            if (mCursor >= 0 and KEY_CLICK == key) { /* click = cursor + Enter */
+                int c = mOffset + UIClickRow - 1;
+                if (UIClickWin != shInterface::kMenu or c < mOffset or c >= mLast
+                    or !selectable (c))
+                    continue;
+                mCursor = c;
+                key = 10;
+            }
+            if (mCursor >= 0) {
+                bool digits = !(mFlags & kCountAllowed);
+                int step = spk == shInterface::kUpArrow or (digits and '8' == key) ? -1
+                         : spk == shInterface::kDownArrow or (digits and '2' == key) ? 1 : 0;
+                if (step) {
+                    int c = mCursor;
+                    do c += step;
+                    while (c >= 0 and c < mChoices.count () and !selectable (c));
+                    if (c >= 0 and c < mChoices.count ()) mCursor = c;
+                    if (mCursor < mOffset) { mLast -= mOffset - mCursor; mOffset = mCursor; }
+                    if (mCursor >= mLast) { mOffset += mCursor - mLast + 1; mLast = mCursor + 1; }
+                    if (mCursor == firstSelectable () and mOffset > 0) { /* show headers above */
+                        mLast -= mOffset; mOffset = 0;
+                        if (mCursor >= mLast) { mOffset += mCursor - mLast + 1; mLast = mCursor + 1; }
+                    }
+                    break;
+                }
+                bool any = false;
+                for (int j = 0; j < mChoices.count (); ++j)
+                    if (mChoices.get (j)->mSelected) any = true;
+                if ((digits and '5' == key) or
+                    ((13 == key or 10 == key) and (!(mFlags & kMultiPick) or !any)))
+                {
+                    interpretKey (mChoices.get (mCursor)->mLetter);
+                    if ((mFlags & kMultiPick) and (13 == key or 10 == key)) mDone = 1;
+                    if (mDone) break;
+                    break;
+                }
+            }
 
             if (27 == key or 13 == key or 10 == key or ' ' == key) { /* done */
                 mDone = 1; break;

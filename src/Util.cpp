@@ -129,12 +129,34 @@ insertionsort (void *base, size_t nmemb, size_t size,
 
 
 
+/* RVIP: the X11 frontend calls name functions while the game may hold
+   GetBuf () buffers; it saves and restores the whole ring around them. */
+static char *getbuf_ring;
+static int *getbuf_n;
+void
+GetBufSave (char *save, int *n)
+{
+    if (!getbuf_ring) GetBuf ();
+    memcpy (save, getbuf_ring, 64 * SHBUFLEN);
+    *n = *getbuf_n;
+}
+void
+GetBufRestore (const char *save, int n)
+{
+    memcpy (getbuf_ring, save, 64 * SHBUFLEN);
+    *getbuf_n = n;
+}
+
 char *
 GetBuf ()
 {
     const int NUMBUFS = 64;
     static char buffers[NUMBUFS][SHBUFLEN];
     static int n = 0;
+    if (!getbuf_ring) { /* RVIP: frontend saves the ring */
+        getbuf_ring = (char *) buffers;
+        getbuf_n = &n;
+    }
 
     if (n >= NUMBUFS)
         n = 0;
