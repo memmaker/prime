@@ -13,6 +13,7 @@
 	#bar { display: flex; align-items: center; gap: 6px; padding: 4px 8px; background: var(--panel);
 		border-bottom: 1px solid var(--line); height: 32px; white-space: nowrap; overflow: hidden; }
 	#bar h1 { font-size: 14px; margin: 0 8px 0 0; color: var(--accent); letter-spacing: .04em; }
+#bar h1 a { color: inherit; text-decoration: none; }
 	#bar .sep { width: 1px; height: 18px; background: var(--line); margin: 0 4px; flex: none; }
 	#bar .sp { flex: 1; }
 	#bar .hint { color: var(--dim); overflow: hidden; text-overflow: ellipsis; }
@@ -82,7 +83,7 @@
 </head>
 <body>
 <div id="bar">
-	<h1>PRIME</h1>
+	<h1><a href="../shrine/prime.html">PRIME</a></h1>
 	<button id="btn-help" title="Game guide, controls and saving">Help</button>
 	<span class="sep"></span>
 	<button id="btn-zoom-out" title="Smaller map tiles">Zoom −</button>
