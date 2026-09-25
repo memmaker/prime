@@ -223,7 +223,7 @@
 			});
 			menu.addEventListener('click', function (e) { e.stopPropagation(); });
 			document.addEventListener('click', function () { menu.hidden = true; });
-			document.addEventListener('keydown', function (e) { if (e.key === 'Escape') menu.hidden = true; }, true);
+			document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !menu.hidden) { menu.hidden = true; e.stopImmediatePropagation(); e.preventDefault(); } }, true);
 		}
 		wm.state = function () { return clone(S); };
 		return wm;
