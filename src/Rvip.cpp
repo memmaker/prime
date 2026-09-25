@@ -401,7 +401,14 @@ shInterface::rvipCommand ()
         if (!hostileInView ()) return kListInventory;
     }
     while (1) {
+#ifdef __EMSCRIPTEN__
+        extern int RvipAtPrompt;  /* the page may autosave now */
+        RvipAtPrompt = 1;
         Command c = getCommand ();
+        RvipAtPrompt = 0;
+#else
+        Command c = getCommand ();
+#endif
         int onstairs = 0;
         shFeature *f = Level->getFeature (hero->mX, hero->mY);
         if (kCmdMenu == c) {

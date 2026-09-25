@@ -2852,6 +2852,10 @@ shCreature::playerControl ()
         switch (res) {
         case 1:
             if (0 == saveGame ()) {
+#ifdef __EMSCRIPTEN__
+                extern int PlayerSaved;
+                PlayerSaved = 1;
+#endif
                 I->p ("Game saved.  Press enter.");
                 GameOver = 1;
                 I->pause ();

@@ -795,7 +795,7 @@ nameOK (const char *name)
 
 /* returns 0 on success, -1 on failure*/
 int
-saveGame ()
+saveGame (const char *path)
 {
     int fd;
     char savename[PRIME_PATH_LENGTH];
@@ -804,6 +804,10 @@ saveGame ()
     UpdateList.reset ();
 
     snprintf (savename, sizeof(savename)-1, "%s/save/%s.sav", UserDir, Hero.cr ()->mName);
+    if (path) snprintf (savename, sizeof (savename) - 1, "%s", path);
+#ifdef __EMSCRIPTEN__
+    else unlink (savename);   /* the page's autosave of this game */
+#endif
 
 retry:
     fd = open (savename, O_CREAT | O_WRONLY | O_EXCL | O_BINARY,
@@ -833,7 +837,7 @@ retry:
         }
     }
 
-    I->p("Saving...");
+    if (!path) I->p("Saving...");
     saveHeader (fd);
 
     saveInt (fd, Clock);

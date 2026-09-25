@@ -41,4 +41,11 @@ Source: https://github.com/Larzid/PRIME (shallow clone, upstream 4404414);
 - Tested (ASan clean): new game, explore incl. doors/items/locked doors/
   monsters, `>` walk, Enter menu, inventory examine/wield via cursor, item
   prompt cursor, clicks, help, save → restore (status + pack identical),
-  quit. Not done: web port (7) and so sound (6b).
+  quit. Not done: sound (6b).
+- Web: `web/build.sh` (em++, Asyncify, IDBFS) → `web/dist`, `web/deploy.sh`
+  → https://ruzzoli.de/roguelikes/prime/. `__EMSCRIPTEN__` backend in
+  XUI.cpp (js_put/js_tile/js_popup/js_flush/js_key). Saves under
+  `/prime/user` (IndexedDB); autosave at the command prompt
+  (`RvipAtPrompt`, save to tmp + rename), death/quit deletes the save unless
+  the player saved (`webEnd()` in `exitPRIME`). Fixed for wasm: uninit `sp`
+  in Menu.cpp, function-pointer cast in `shVector::sort`, no SIGSEGV catch.

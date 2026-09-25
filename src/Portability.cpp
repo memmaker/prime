@@ -1,3 +1,6 @@
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
 #ifdef _WIN32
 #include <windows.h>
 #endif
@@ -19,6 +22,8 @@ wait_msec (unsigned int ms)
 {
 #ifdef _WIN32
     Sleep (ms);
+#elif defined (__EMSCRIPTEN__)
+    emscripten_sleep (ms);
 #else
     struct timespec wait;
     wait.tv_sec = ms / 1000;

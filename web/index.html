@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PRIME</title>
+<style>
+	:root { --bg: #0b0b0d; --panel: #16161a; --line: #2b2b33; --text: #d8d8de; --dim: #8a8a96; --accent: #d9b24c;
+		--gut: #1d1d23; --gut-hover: #d9b24c; }
+	* { box-sizing: border-box; }
+	html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text);
+		font: 13px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; overflow: hidden; }
+	#bar { display: flex; align-items: center; gap: 6px; padding: 4px 8px; background: var(--panel);
+		border-bottom: 1px solid var(--line); height: 32px; white-space: nowrap; overflow: hidden; }
+	#bar h1 { font-size: 14px; margin: 0 8px 0 0; color: var(--accent); letter-spacing: .04em; }
+	#bar .sep { width: 1px; height: 18px; background: var(--line); margin: 0 4px; flex: none; }
+	#bar .sp { flex: 1; }
+	#bar .hint { color: var(--dim); overflow: hidden; text-overflow: ellipsis; }
+	button { background: #22222a; color: var(--text); border: 1px solid var(--line); border-radius: 4px;
+		padding: 2px 10px; font: inherit; cursor: pointer; }
+	button:hover { border-color: var(--accent); }
+	#status { position: fixed; left: 50%; top: 40px; transform: translateX(-50%); z-index: 5;
+		background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px 14px; max-width: 90vw; }
+	#status.error { border-color: #b44; color: #f99; }
+
+	/* Tiling area: windows and gutters are positioned by prime.js */
+	#game { position: absolute; left: 0; right: 0; top: 32px; bottom: 0; overflow: hidden; background: var(--gut); }
+	.win { position: absolute; background: #000; border: 1px solid var(--line); display: flex; flex-direction: column; overflow: hidden; }
+	.win > .t { flex: none; display: flex; align-items: center; font-size: 11px; height: 20px; padding: 0 2px 0 6px;
+		color: var(--dim); background: var(--panel); border-bottom: 1px solid var(--line); }
+	.win > .t .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+	.win > .t .name:hover { color: var(--text); }
+	.win > .t input { width: 100%; font: inherit; color: var(--text); background: #000; border: 1px solid var(--accent);
+		border-radius: 2px; padding: 0 3px; height: 16px; outline: none; }
+	.win > .t .zoom { flex: none; display: flex; gap: 2px; visibility: hidden; }
+	.win > .t:hover .zoom { visibility: visible; }
+	.win > .t .zoom button { padding: 0 5px; font-size: 11px; line-height: 14px; height: 16px; }
+	.win > .body { flex: 1; min-height: 0; overflow: hidden; }
+	.win canvas { display: block; }
+	#pop { position: absolute; z-index: 3; background: #000; border: 1px solid var(--dim); box-shadow: 0 6px 24px rgba(0,0,0,.7); }
+	#pop canvas { display: block; cursor: pointer; }
+	#pop[hidden] { display: none; }
+	.split { position: absolute; background: var(--gut); z-index: 2; touch-action: none; }
+	.split.v { cursor: col-resize; }
+	.split.h { cursor: row-resize; }
+	.split:hover, .split.drag { background: var(--gut-hover); }
+
+	#overlay, #help { position: fixed; inset: 0; background: rgba(0,0,0,.75); display: flex;
+		align-items: center; justify-content: center; z-index: 10; }
+	#overlay[hidden], #help[hidden], #status[hidden], #game[hidden] { display: none; }
+	.card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 20px 24px; max-width: 560px; }
+	.card h2 { margin: 0 0 10px; font-size: 16px; color: var(--accent); }
+	kbd { display: inline-block; min-width: 1.7em; padding: 0 6px; text-align: center; font: 600 12px/1.6 ui-monospace, Menlo, monospace;
+		background: #22222a; border: 1px solid #3a3a46; border-bottom-width: 2px; border-radius: 4px; color: var(--text); }
+
+	/* Help: the game guide */
+	#help .panel { position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+		width: min(980px, calc(100vw - 32px)); height: calc(100vh - 64px); display: flex; flex-direction: column; }
+	#help .head { display: flex; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--line); }
+	#help .head h2 { margin: 0; font-size: 16px; color: var(--accent); flex: 1; }
+	#help-body { overflow: auto; padding: 4px 24px 32px; outline: none; font-size: 14px; line-height: 1.6; }
+	#help-body h2 { font-size: 19px; margin: 28px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--line); color: var(--text); }
+	#help-body h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--accent); margin: 18px 0 8px; }
+	#help-body p, #help-body ul, #help-body ol { max-width: 76ch; margin: 0 0 12px; }
+	#help-body li { margin: 3px 0; }
+	#help-body .toc { display: flex; flex-wrap: wrap; gap: 6px; margin: 14px 0 0; padding: 0; list-style: none; }
+	#help-body .toc a { display: block; padding: 3px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--text); text-decoration: none; }
+	#help-body .toc a:hover { border-color: var(--accent); }
+	#help-body .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+	#help-body .box { background: #1c1c22; border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; }
+	#help-body .key { background: #221d10; border-color: #4a3d18; }
+	#help-body dl { margin: 0; display: grid; grid-template-columns: minmax(5.5em, max-content) 1fr; gap: 6px 12px; align-items: baseline; }
+	#help-body dd { margin: 0; }
+	#help-body .all { columns: 3 240px; column-gap: 24px; }
+	#help-body .all div { break-inside: avoid; display: flex; gap: 10px; padding: 3px 0; border-bottom: 1px dashed var(--line); }
+	#help-body .all kbd { flex: none; }
+	#help-body details summary { cursor: pointer; color: var(--accent); margin: 8px 0; }
+	#help-body code { font: 12px ui-monospace, Menlo, monospace; background: #22222a; padding: 0 4px; border-radius: 3px; }
+	#help-body .or { color: var(--dim); font-size: 12px; margin: 0 3px; }
+	#help-body .plus { color: var(--dim); margin: 0 2px; }
+</style>
+</head>
+<body>
+<div id="bar">
+	<h1>PRIME</h1>
+	<button id="btn-help" title="Game guide, controls and saving">Help</button>
+	<span class="sep"></span>
+	<button id="btn-zoom-out" title="Smaller map tiles">Zoom −</button>
+	<button id="btn-zoom-in" title="Bigger map tiles">Zoom +</button>
+	<button id="btn-layout" title="Put the windows back where they started">Reset windows</button>
+	<span class="sep"></span>
+	<button id="btn-export" title="Download the save file">Export save</button>
+	<button id="btn-import" title="Load a save file from disk">Import save</button>
+	<button id="btn-new" title="Delete the saved game in this browser">New game</button>
+	<input type="file" id="import-file" hidden>
+	<span class="sp"></span>
+	<span class="hint">Drag the gaps between windows to resize them · Enter: all commands</span>
+</div>
+
+<div id="status">Loading PRIME…</div>
+
+<div id="game" hidden>
+	<div class="win" id="t-map"><div class="body"><canvas></canvas></div></div>
+	<div class="win" id="t-stat"><div class="t"><span class="name">Status</span><span class="zoom"><button class="zout" title="Smaller text">A−</button><button class="zin" title="Bigger text">A+</button></span></div><div class="body"><canvas></canvas></div></div>
+	<div class="win" id="t-msg"><div class="t"><span class="name">Messages</span><span class="zoom"><button class="zout" title="Smaller text">A−</button><button class="zin" title="Bigger text">A+</button></span></div><div class="body"><canvas></canvas></div></div>
+	<div class="win" id="t-inv"><div class="t"><span class="name">Inventory</span><span class="zoom"><button class="zout" title="Smaller text">A−</button><button class="zin" title="Bigger text">A+</button></span></div><div class="body"><canvas></canvas></div></div>
+	<div class="split h" id="split-bottom" title="Drag to resize"></div>
+	<div class="split h" id="split-stat" title="Drag to resize"></div>
+	<div class="split v" id="split-side" title="Drag to resize"></div>
+	<div id="pop" hidden><canvas></canvas></div>
+</div>
+
+<div id="help" hidden>
+	<div class="panel" role="dialog" aria-label="PRIME guide">
+		<div class="head"><h2>PRIME guide</h2><button id="help-close">Close</button></div>
+		<div id="help-body" tabindex="-1">Loading…</div>
+	</div>
+</div>
+
+<div id="overlay" hidden>
+	<div class="card">
+		<h2>PRIME has ended</h2>
+		<p id="overlay-msg">Your game has been saved.</p>
+		<button id="btn-restart">Play again</button>
+	</div>
+</div>
+
+<script src="prime.js"></script>
+<script src="prime-core.js"></script>
+</body>
+</html>

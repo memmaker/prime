@@ -9,10 +9,14 @@
  * PRIME_SCALE (tile scale, 1), PRIME_XFT (font, Menlo), PRIME_TEXT (px, 15),
  * PRIME_MAP / _STATUS / _MSG / _INV = "x,y" window positions,
  * PRIME_DUMP=<file> (text of every pane on each refresh, for testing). */
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>   /* browser: the page (web/prime.js) draws the panes */
+#else
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/keysym.h>
 #include <X11/Xft/Xft.h>
+#endif
 #include <ctype.h>
 #include <string.h>
 #include <stdlib.h>
@@ -23,6 +27,8 @@
 #include "Effect.h"
 #include "Object.h"
 #include "XUI.h"
+#include "Game.h"
+#include <unistd.h>
 
 /* Special keys (names in KeyNames below, used by the keymap files). */
 enum {
@@ -148,6 +154,7 @@ enum { P_MAP, P_STATUS, P_MSG, P_INV, P_POP, NPANES };
 static const char *pname[NPANES] = { "MAP", "STATUS", "MSG", "INV", "POP" };
 static const char *ptitle[NPANES] = { "PRIME", "PRIME Status", "PRIME Messages", "PRIME Inventory", "" };
 
+#ifndef __EMSCRIPTEN__
 static Display *dpy;
 static int scr;
 static Visual *vis;
@@ -156,15 +163,18 @@ static GC gc;
 static XftFont *txtfont, *boldfont;
 static XftColor xcol[16];
 static unsigned long pix[16];
+static XImage *img; /* one map cell, reused */
+#endif
 static int scale = 1, cw, tw, th, viewCols = 40, viewX0 = -1;
 static unsigned char *sheet; /* RGBA */
 static int sheet_w, sheet_h;
-static XImage *img; /* one map cell, reused */
 
 static struct pane {
+#ifndef __EMSCRIPTEN__
     ::Window win;
     Pixmap pix;
     XftDraw *xd;
+#endif
     int cols, rows, cw, ch, pad;
     std::vector<Cell> shown; /* what the pixmap shows, to skip redraws */
 } P[NPANES];
@@ -201,6 +211,53 @@ load_sheet ()
     fclose (f);
 }
 
+#ifdef __EMSCRIPTEN__
+EM_JS(void, js_init, (int p, int c, int r), { Module.pr.init(p, c, r); });
+EM_JS(void, js_put, (int p, int y, int x, int ch), { Module.pr.put(p, y, x, ch); });
+EM_JS(void, js_tile, (int x, int y, const unsigned char *rgba), { Module.pr.tile(x, y, rgba); });
+EM_JS(void, js_popup, (int r, int c), { Module.pr.popup(r, c); });
+EM_JS(void, js_flush, (int fy, int fx, int cy, int cx), { Module.pr.flush(fy, fx, cy, cx); });
+EM_JS(int, js_key, (void), { return Module.pr.key(); });
+EM_JS(int, js_want_save, (void), { return Module.pr.wantSave(); });
+EM_JS(void, js_end, (int saved), { Module.pr.end(saved); });
+static bool dpy = true;   /* "display open" for the shared code */
+
+static void
+open_display ()
+{
+    viewCols = MAPMAXCOLUMNS;  /* the page scrolls the whole map */
+    cw = TS;
+    load_sheet ();
+}
+
+static void
+pane_init (int p, int cols, int rows)
+{
+    struct pane *q = &P[p];
+    q->cols = cols;
+    q->rows = rows;
+    q->shown.assign (cols * rows, Cell ());
+    for (size_t i = 0; i < q->shown.size (); ++i) { q->shown[i].ch = ' '; q->shown[i].fg = 7; }
+    js_init (p, cols, rows);
+}
+
+static void
+popup (int rows, int cols)
+{
+    struct pane *q = &P[P_POP];
+    if (!rows) {
+        if (q->cols) js_popup (0, 0);
+        q->cols = q->rows = 0;
+        return;
+    }
+    if (q->cols == cols && q->rows == rows) return;
+    js_popup (rows, cols);    /* a blank pane of that size */
+    q->cols = cols;
+    q->rows = rows;
+    q->shown.assign (cols * rows, Cell ());
+    for (size_t i = 0; i < q->shown.size (); ++i) { q->shown[i].ch = ' '; q->shown[i].fg = 7; }
+}
+#else
 static XftFont *
 font (double px, int weight)
 {
@@ -338,6 +395,8 @@ popup (int rows, int cols)
     XMapRaised (dpy, q->win);
 }
 
+#endif
+
 static void
 draw_text (int p, int y, int x, Cell c)
 {
@@ -346,6 +405,9 @@ draw_text (int p, int y, int x, Cell c)
     Cell &s = q->shown[y * q->cols + x];
     if (s.ch == c.ch && s.fg == c.fg && s.bg == c.bg) return;
     s = c;
+#ifdef __EMSCRIPTEN__
+    js_put (p, y, x, (unsigned char) c.ch | (c.fg & 15) << 8 | (c.bg & 15) << 12);
+#else
     int px = q->pad + x * q->cw, py = q->pad + y * q->ch;
     int fg = c.fg & 15, bg = c.bg & 15;
     if (bg) fg = 0; /* reverse video: black text on the colour */
@@ -358,6 +420,7 @@ draw_text (int p, int y, int x, Cell c)
     XftTextExtents8 (dpy, f, &ch, 1, &gi);
     XftDrawString8 (q->xd, &xcol[fg ? fg : (bg ? 0 : 7)], f, px + (q->cw - gi.xOff) / 2,
                     py + (q->ch - f->ascent - f->descent) / 2 + f->ascent, &ch, 1);
+#endif
 }
 
 static void
@@ -430,12 +493,22 @@ draw_cell (int vx, int mx, int my)
     std::vector<int> &t = UI->mCache[mx][my].t;
     for (size_t i = 0; i + 3 < t.size (); i += 4)
         layer (buf, t[i], t[i + 1], t[i + 3]);
+#ifdef __EMSCRIPTEN__
+    static unsigned char rgba[TS * TS * 4];
+    for (int i = 0; i < TS * TS; ++i) {
+        rgba[i * 4] = buf[i * 3]; rgba[i * 4 + 1] = buf[i * 3 + 1];
+        rgba[i * 4 + 2] = buf[i * 3 + 2]; rgba[i * 4 + 3] = 255;
+    }
+    js_tile (mx, my, rgba);
+    (void) vx;
+#else
     for (int y = 0; y < cw; ++y)
         for (int x = 0; x < cw; ++x) {
             unsigned char *s = buf + ((y / scale) * TS + x / scale) * 3;
             XPutPixel (img, x, y, (unsigned long) s[0] << 16 | s[1] << 8 | s[2]);
         }
     XPutImage (dpy, P[P_MAP].pix, gc, img, 0, 0, vx * cw, my * cw, cw, cw);
+#endif
 }
 
 static void
@@ -662,6 +735,16 @@ shXInterface::present ()
     draw_messages (this, mHistoryIdx, mHistoryWrapped, mLogHistory);
     draw_inventory ();
     draw_popup (this);
+#ifdef __EMSCRIPTEN__
+    {
+        shCreature *h = Hero.cr ();
+        bool target = mCurX < MAPMAXCOLUMNS && mCurY < MAPMAXROWS && h && heroPlaced ()
+            && !(h->mX == mCurX && h->mY == mCurY);
+        int fy = target ? mCurY : heroPlaced () ? h->mY : -1;
+        int fx = target ? mCurX : heroPlaced () ? h->mX : -1;
+        js_flush (fy, fx, target ? mCurY : -1, target ? mCurX : -1);
+    }
+#else
     for (int p = 0; p < NPANES; p++) {
         struct pane *q = &P[p];
         if (q->win && q->pix && q->rows)
@@ -676,6 +759,7 @@ shXInterface::present ()
         XDrawRectangle (dpy, P[P_MAP].win, gc, (mCurX - viewX0) * cw, mCurY * cw, cw - 1, cw - 1);
     }
     XFlush (dpy);
+#endif
     const char *dp = getenv ("PRIME_DUMP");
     if (dp && (dumpf = fopen (dp, "w"))) {
         fprintf (dumpf, "== MAP (x0=%d)\n", viewX0);
@@ -693,6 +777,77 @@ shXInterface::present ()
     }
 }
 
+#ifdef __EMSCRIPTEN__
+int RvipAtPrompt;          /* Rvip.cpp: waiting for a command (safe to autosave) */
+int PlayerSaved;           /* Hero.cpp: "Save and quit" worked */
+static double lastYield;
+
+static void webAutosave ();
+
+/* Keys come as the codes prime.js sends (the same as keycode () above
+   makes); a click on a pop-up row as 0x10000 + row. */
+static int
+getkey (bool wait)
+{
+    for (;;) {
+        int k = js_key ();
+        if (k >= 0x10000) {
+            int r = k - 0x10000;
+            if (r < P[P_POP].rows && popRows[r].win >= 0) {
+                UIClickWin = popRows[r].win;
+                UIClickRow = popRows[r].row;
+                return KEY_CLICK;
+            }
+            continue;
+        }
+        if (k >= 0) return k;
+        if (RvipAtPrompt && js_want_save ()) webAutosave ();
+        if (!wait) return -1;
+        emscripten_sleep (10);
+        lastYield = emscripten_get_now ();
+    }
+}
+
+/* Explore asks before every step: let the page paint now and then. */
+bool
+x11KeyPending ()
+{
+    if (emscripten_get_now () - lastYield > 40) {
+        emscripten_sleep (0);
+        lastYield = emscripten_get_now ();
+    }
+    return EM_ASM_INT ({ return Module.pr.pending (); });
+}
+
+/* PRIME deletes the save it loads: keep a copy while the game runs
+   (temp file + rename, so a reload mid-write can't lose it). */
+static void
+webAutosave ()
+{
+    extern char UserDir[];
+    char path[256], tmp[256];
+    if (!heroPlaced () || GameOver) return;
+    snprintf (path, sizeof path, "%s/save/%s.sav", UserDir, Hero.cr ()->mName);
+    snprintf (tmp, sizeof tmp, "%s.tmp", path);
+    unlink (tmp);
+    if (0 == saveGame (tmp)) rename (tmp, path);
+    EM_ASM ({ Module.pr.saved (); });
+}
+
+/* exitPRIME (): the game is over or saved. Without a real save the
+   autosave must go, or a dead character comes back. */
+void
+webEnd ()
+{
+    extern char UserDir[];
+    char path[256];
+    if (!PlayerSaved && Hero.cr ()) {
+        snprintf (path, sizeof path, "%s/save/%s.sav", UserDir, Hero.cr ()->mName);
+        unlink (path);
+    }
+    js_end (PlayerSaved);
+}
+#else
 /* Arrows and Home/End/PgUp/PgDn are the keymap's named keys; the keypad
    sends digits and + - * / . (RVIP numpad rules). */
 static int
@@ -781,6 +936,8 @@ x11KeyPending ()
     return false;
 }
 
+#endif
+
 /**********************************************************************
  * The interface
  */
@@ -822,6 +979,9 @@ shXInterface::shXInterface ()
     pane_init (P_MAP, viewCols, MAPMAXROWS);
     pane_init (P_STATUS, 16, MAPMAXROWS);
     pane_init (P_MSG, 80, 11);
+#ifdef __EMSCRIPTEN__
+    pane_init (P_INV, 40, 26);  /* the page's layout: inventory under Status */
+#else
     {
         int x, y;
         place (P_INV, &x, &y);
@@ -829,12 +989,15 @@ shXInterface::shXInterface ()
         pane_init (P_INV, cols, 11);
     }
     XFlush (dpy);
+#endif
 }
 
 shXInterface::~shXInterface ()
 {
+#ifndef __EMSCRIPTEN__
     if (dpy) XCloseDisplay (dpy);
     dpy = NULL;
+#endif
 }
 
 void

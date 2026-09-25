@@ -643,7 +643,7 @@ shTextViewer::show (bool bottom)
     if (bottom)  first = maxi (mNumLines - height, 0);
     I->newWin (shInterface::kTemp);
 
-    shInterface::SpecialKey sp;
+    shInterface::SpecialKey sp = shInterface::kNoSpecialKey;
     while (sp != shInterface::kEscape) {
         /* Show content. */
         I->clearWin (shInterface::kTemp);

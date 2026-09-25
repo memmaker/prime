@@ -180,5 +180,9 @@ exitPRIME (const int code)
     printf ("Press enter to exit...\n");
     getchar ();
 #endif
+#ifdef __EMSCRIPTEN__
+    extern void webEnd ();
+    webEnd ();                 /* RVIP: tell the page, drop the autosave */
+#endif
     exit (code);
 }

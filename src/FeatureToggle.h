@@ -20,3 +20,6 @@
 #undef CATCH_SIGSEGV
 #endif
 #endif
+#ifdef __EMSCRIPTEN__
+#undef CATCH_SIGSEGV
+#endif

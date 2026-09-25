@@ -251,10 +251,17 @@ template <class T>
 void
 shVector<T>::sort (int (* compareFunc) (T *, T *))
 {
-    /* must be a stable sort (mergesort is preferred) */
-
-    insertionsort (mItems, mCount, sizeof (T),
-                   (int (*)(const void *, const void *)) compareFunc);
+    /* must be a stable sort (mergesort is preferred); typed insertion sort,
+       no cast of compareFunc (WebAssembly traps on mismatched calls) */
+    for (int i = 1; i < mCount; ++i) {
+        T v = mItems[i];
+        int j = i - 1;
+        while (j >= 0 and compareFunc (&mItems[j], &v) > 0) {
+            mItems[j + 1] = mItems[j];
+            --j;
+        }
+        mItems[j + 1] = v;
+    }
 }
 
 

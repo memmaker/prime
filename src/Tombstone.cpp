@@ -3,7 +3,7 @@
 #include "Global.h"
 #include "Util.h"
 #include "Map.h"
-#include "NCUI.h" // argh, but Hero::tomb uses it
+#include "Interface.h"
 #include "Hero.h"
 #include "Mutant.h"
 #include "Game.h"

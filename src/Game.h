@@ -7,7 +7,7 @@ int newGame (const char *name);
 
 int loadGame (const char *name);
 
-int saveGame ();
+int saveGame (const char *path = NULL); /* RVIP: path for the web autosave */
 
 void gameLoop ();
 
