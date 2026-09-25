@@ -190,20 +190,11 @@
 	var hero = { y: -1, x: -1 }, off = { x: 0, y: 0 };
 	/* Keep the hero in the middle half of the map window; recentre when it
 	 * leaves it (or always, after a zoom, resize or new level) */
-	function scrollMap(force) {
+	function scrollMap() {
 		var T = panes[P_MAP];
-		if (!T || !T.box) return;
+		if (!T || !T.box || hero.x < 0) return;
 		T.cv.style.width = T.w + 'px'; T.cv.style.height = T.h + 'px';
-		['x', 'y'].forEach(function (a) {
-			var size = a === 'x' ? T.w : T.h, view = a === 'x' ? T.box.w : T.box.h;
-			var c = (a === 'x' ? hero.x * T.cw + T.cw / 2 : hero.y * T.ch + T.ch / 2) - off[a];
-			if (hero.x < 0) return;
-			if (size <= view) off[a] = 0;
-			else if (force || c < view / 4 || c > view * 3 / 4)
-				off[a] = clamp(Math.round(c + off[a] - view / 2), 0, size - view);
-		});
-		T.cv.style.marginLeft = -off.x + 'px';
-		T.cv.style.marginTop = -off.y + 'px';
+		off = RvipWM.center(T.cv, (hero.x + 0.5) * T.cw, (hero.y + 0.5) * T.ch, T.w, T.h, T.box.w, T.box.h);
 	}
 
 	var wm = null;
