@@ -98,7 +98,7 @@
 		if (k > 32) {
 			c.font = fg >= 14 && !bg ? 'bold ' + T.font : T.font;
 			c.textAlign = 'center'; c.textBaseline = 'middle';
-			c.fillStyle = bg ? '#000' : ((!fg || fg === 7) && T.rowFg && T.rowFg[y]) || PAL[fg || 7];
+			c.fillStyle = bg ? '#000' : PAL[fg || 7];
 			c.fillText(String.fromCharCode(k), px + T.cw / 2, py + T.ch / 2 + 1);
 		}
 	}
@@ -212,18 +212,6 @@
 		document.querySelector('#t-vis .body').style.fontSize = L.font.vis + 'px';
 		saveLayout();
 	}
-	/* inventory lines coloured by item kind (Angband colours, rvip-wm.js) */
-	function invColors() {
-		var T = panes[P_INV];
-		if (!T) return;
-		T.rowFg = T.rowFg || [];
-		for (var y = 0; y < T.rows; y++) {
-			var s = '';
-			for (var x = 0; x < T.cols; x++) s += String.fromCharCode(T.ch_[y * T.cols + x] & 0xff);
-			var c = /^\s*[a-zA-Z][)\-] /.test(s) ? RvipWM.itemColor(s.replace(/^\s*[a-zA-Z][)\-] /, '')) : null;
-			if (c !== (T.rowFg[y] || null)) { T.rowFg[y] = c; for (x = 0; x < T.cols; x++) draw(P_INV, y, x); }
-		}
-	}
 	function applyDom() { if (wm) wm.apply(); }
 	function makeWM() {
 		var s = defaultLayout().split, A = areaSize();
@@ -292,7 +280,6 @@
 			fit(P_POP);
 		},
 		flush: function (fy, fx, cy, cx) {
-			invColors();
 			var old = { y: cur.y, x: cur.x };
 			cur.y = cy; cur.x = cx;                  /* targeting cursor, -1: none */
 			if (panes[P_MAP] && old.y >= 0) draw(P_MAP, old.y, old.x);

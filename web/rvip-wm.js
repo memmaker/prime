@@ -229,40 +229,18 @@
 		return wm;
 	};
 	/* ---- shared content helpers ---- */
-	/* Angband tval colours (list-tvals.h / object.txt), the fallback for games
-	 * without item colours of their own; matched on the item's name */
-	var C = { potion: '#40a0ff', scroll: '#ffffff', ring: '#ff4040', amulet: '#ff9000', wand: '#40d040',
-		staff: '#d09050', rod: '#a060ff', food: '#d09050', armor: '#a07040', weapon: '#b0b0b8', ammo: '#909098',
-		gold: '#ffe040', gem: '#ff60ff', light: '#ffff90', book: '#60e0e0', tool: '#c0c0c0' };
-	var WORDS = [
-		[/\bring mail\b|\bmail\b|armou?r|\bplate\b|leather|\bshield\b|\bhelm|\bboots?\b|gloves|gauntlets|\bcloak|\brobe\b|\bcap\b|crown|\bsuit\b|\bvest\b|jacket/i, 'armor'],
-		[/potion|flask|vial|elixir/i, 'potion'], [/scroll|parchment/i, 'scroll'], [/\brings?\b/i, 'ring'],
-		[/amulet|necklace|talisman|medallion/i, 'amulet'], [/\bwand/i, 'wand'], [/\brods?\b/i, 'rod'],
-		[/quarterstaff/i, 'weapon'], [/\bstaff|\bstaves/i, 'staff'],
-		[/food|ration|mango|slime.?mold|fruit|meat|\bbread|mushroom|biscuit|jerky|\bapple|\bcorpse|\beggs?\b|\btin\b|cram|lembas/i, 'food'],
-		[/arrow|\bbolt|\bdarts?\b|shuriken|\bshots?\b|pebble|\bstones?\b|\brocks?\b|\bbullets?|\bammo|cartridge|clip/i, 'ammo'],
-		[/sword|dagger|\bmace|\bspear|\bbow\b|\baxe|\bclub|flail|hammer|crossbow|trident|sling|halberd|\bpike|scimitar|rapier|\bwhip|lance|\bknife|morning star|glaive|javelin|\bblade|katana|\bpistol|\brifle|\bgun\b|\blaser|blaster|\bmaul|scythe|sabre|cutlass/i, 'weapon'],
-		[/\bgold\b|\bcoins?\b|zorkmid|buckazoid/i, 'gold'], [/\bgems?\b|jewel|diamond|ruby|emerald|sapphire|opal|\bpearl/i, 'gem'],
-		[/torch|lantern|\blamp\b|candle/i, 'light'], [/\bbook|tome|spellbook|\bprayers?\b|manual/i, 'book'],
-		[/\bpick\b|shovel|\bkey\b|\btool/i, 'tool']
-	];
-	/* Rogue-family map glyphs */
-	var GLYPH = { '!': 'potion', '?': 'scroll', '/': 'wand', '=': 'ring', ']': 'armor', ')': 'weapon', '*': 'gold', ':': 'food', ',': 'amulet', '$': 'gold' };
-	window.RvipWM.itemKind = function (text) { for (var i = 0; i < WORDS.length; i++) if (WORDS[i][0].test(text)) return WORDS[i][1]; return null; };
-	window.RvipWM.itemColor = function (text) { var k = window.RvipWM.itemKind(text); return k ? C[k] : null; };
-	window.RvipWM.COLORS = C;
 	/* Visible window: s = lines "M<glyph><name>[\t<css colour>]" (monster) or
-	 * "I<glyph>[name][\t<css colour>]" (item; no name: the glyph's kind; no
-	 * colour: the Angband colour of its kind) */
+	 * "I<glyph><name>[\t<css colour>]" (item); name and colour come from the
+	 * game (RVIP W0), nothing is guessed here */
 	window.RvipWM.visible = function (body, s) {
 		if (body._vis === s) return;
 		body._vis = s;
 		var mon = [], itm = [];
 		s.split('\n').forEach(function (l) {
 			if (!l) return;
-			var g = l.charAt(1), f = l.slice(2).split('\t'), name = f[0], col = f[1] || null, kind = GLYPH[g];
+			var g = l.charAt(1), f = l.slice(2).split('\t'), name = f[0], col = f[1] || null;
 			if (l.charAt(0) === 'M') mon.push([g, name, col]);
-			else itm.push([g, name || kind || 'something', col || C[window.RvipWM.itemKind(name) || kind]]);
+			else itm.push([g, name, col]);
 		});
 		function group(rows) {                     /* "3 × giant rat" */
 			var out = [], seen = {};

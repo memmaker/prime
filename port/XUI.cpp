@@ -638,6 +638,7 @@ draw_inventory ()
     shCreature *h = Hero.cr ();
     int per = q->rows, colw;
     std::vector<std::string> lines;
+    std::vector<int> fgs;   /* each item's own glyph colour */
     /* only once the hero stands on a level: inv () asks it about shops */
     if (heroPlaced () && h->mInventory) {
         static char save[64 * SHBUFLEN];
@@ -650,6 +651,7 @@ draw_inventory ()
                 char buf[128];
                 snprintf (buf, sizeof buf, "%c %s", l, o->inv ());
                 lines.push_back (buf);
+                fgs.push_back (o->getGlyph ().mColor);
             }
         GetBufRestore (save, n);
     }
@@ -662,7 +664,7 @@ draw_inventory ()
             Cell c = { ' ', 7, 0 };
             for (int x = 0; x < colw - 1; ++x) {
                 c.ch = *s ? *s++ : ' ';
-                c.fg = x == 0 ? 15 : 7;
+                c.fg = x == 0 ? 15 : k < fgs.size () && fgs[k] ? fgs[k] : 7;
                 draw_text (P_INV, y, col * colw + x, c);
             }
         }
