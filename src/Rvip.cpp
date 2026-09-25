@@ -1,4 +1,4 @@
-/* RVIP additions (~/Games/RVIP.md), ported from ~/Games/zapm/Rvip.cpp:
+/* RVIP additions (~/Games/rvip-tools/RVIP.md), ported from ~/Games/zapm/Rvip.cpp:
  * auto-explore (X), '<'/'>' walk to the nearest known stairs, command menu
  * on Enter, inventory list with a cursor and item menus. Hooked in via
  * shInterface::rvipCommand () in shCreature::playerControl (Hero.cpp) and
@@ -17,6 +17,7 @@
 static bool x11KeyPending () { return false; }
 #endif
 
+int RvipAutoMore = 1;           /* --More-- after 5 log lines does not wait */
 int RvipMsgs;                   /* bumped by shInterface::vp () */
 static int mode;                /* 0 off, 1 explore, 2 to '>', 3 to '<' */
 static int msgs0, reopen;

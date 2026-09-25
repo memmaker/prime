@@ -104,10 +104,11 @@ shInterface::vp (const char *format, va_list ap)
 {
     const int buflen = LINELEN;
     char strbuf[buflen];
-    extern int RvipMsgs; /* RVIP: explore stops on new messages */
+    extern int RvipMsgs, RvipAutoMore; /* RVIP: explore stops on new messages */
     RvipMsgs++;
     /* Is --More-- needed? */
-    if ((!mNoNewline and 6 == ++mLogSCount) or mPause) {
+    if (!mNoNewline and 6 == ++mLogSCount and RvipAutoMore) mLogSCount = 1;   /* RVIP auto_more: the log just scrolls */
+    if ((!mNoNewline and 6 == mLogSCount) or mPause) {
         doMorePrompt ();
         mLogSCount = 1;
     }
