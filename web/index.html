@@ -95,19 +95,17 @@
 	<button id="btn-new" title="Delete the saved game in this browser">New game</button>
 	<input type="file" id="import-file" hidden>
 	<span class="sp"></span>
-	<span class="hint">Drag the gaps between windows to resize them · Enter: all commands</span>
+	<span class="hint">Windows ▾: layout · drag bars to resize, titles to move · Enter: all commands</span>
 </div>
 
 <div id="status">Loading PRIME…</div>
 
 <div id="game" hidden>
-	<div class="win" id="t-map"><div class="body"><canvas></canvas></div></div>
-	<div class="win" id="t-stat"><div class="t"><span class="name">Status</span><span class="zoom"><button class="zout" title="Smaller text">A−</button><button class="zin" title="Bigger text">A+</button></span></div><div class="body"><canvas></canvas></div></div>
-	<div class="win" id="t-msg"><div class="t"><span class="name">Messages</span><span class="zoom"><button class="zout" title="Smaller text">A−</button><button class="zin" title="Bigger text">A+</button></span></div><div class="body"><canvas></canvas></div></div>
-	<div class="win" id="t-inv"><div class="t"><span class="name">Inventory</span><span class="zoom"><button class="zout" title="Smaller text">A−</button><button class="zin" title="Bigger text">A+</button></span></div><div class="body"><canvas></canvas></div></div>
-	<div class="split h" id="split-bottom" title="Drag to resize"></div>
-	<div class="split h" id="split-stat" title="Drag to resize"></div>
-	<div class="split v" id="split-side" title="Drag to resize"></div>
+	<div class="win" id="t-map"><div class="t"><span class="name">Map</span></div><div class="body"><canvas></canvas></div></div>
+	<div class="win" id="t-stat"><div class="t"><span class="name">Status</span></div><div class="body"><canvas></canvas></div></div>
+	<div class="win" id="t-msg"><div class="t"><span class="name">Messages</span></div><div class="body"><canvas></canvas></div></div>
+	<div class="win" id="t-inv"><div class="t"><span class="name">Inventory</span></div><div class="body"><canvas></canvas></div></div>
+	<div class="win" id="t-vis"><div class="t"><span class="name">Visible</span></div><div class="body wm-list"></div></div>
 	<div id="pop" hidden><canvas></canvas></div>
 </div>
 
@@ -126,6 +124,7 @@
 	</div>
 </div>
 
+<script src="rvip-wm.js"></script>
 <script src="prime.js"></script>
 <script src="prime-core.js"></script>
 </body>

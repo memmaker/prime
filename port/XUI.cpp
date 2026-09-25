@@ -220,6 +220,39 @@ EM_JS(void, js_flush, (int fy, int fx, int cy, int cx), { Module.pr.flush(fy, fx
 EM_JS(int, js_key, (void), { return Module.pr.key(); });
 EM_JS(int, js_want_save, (void), { return Module.pr.wantSave(); });
 EM_JS(void, js_end, (int saved), { Module.pr.end(saved); });
+
+/* Visible window (RVIP 5b): creatures the hero sees and objects on seen
+ * squares, in the game's own colours */
+EM_JS(void, js_vis, (const char *s), { if (Module.pr.vis) Module.pr.vis(UTF8ToString(s)); });
+static const char *vcolor (int c)
+{
+    static const char *pal[] = { "#000", "#35d", "#3b3", "#3cc", "#c33", "#c3c", "#a60", "#bbb", "#777", "#58f", "#5f5", "#5ff", "#f84", "#f5f", "#ff5", "#fff" };
+    return c >= 0 && c < (int) (sizeof pal / sizeof *pal) ? pal[c] : "";
+}
+
+static void sendVisible ()
+{
+    static char buf[4096];
+    int n = 0;
+    if (!Level || !Hero.cr ()) { js_vis (""); return; }
+    for (int i = 0; i < Level->mCrList.count () && n < 3900; i++) {
+        shCreature *c = Level->mCrList.get (i);
+        if (!c || c == Hero.cr () || !Hero.cr ()->canSee (c)) continue;
+        n += snprintf (buf + n, sizeof buf - n, "M%c%s\t%s\n", c->mGlyph.mSym, c->an (), vcolor (c->mGlyph.mColor));
+    }
+    for (int x = 0; x < MAPMAXCOLUMNS; x++)
+        for (int y = 0; y < MAPMAXROWS && n < 3900; y++) {
+            shObjectVector *v = Level->mObjects[x][y];
+            if (!v || !Hero.cr ()->canSee (x, y)) continue;
+            for (int i = 0; i < v->count () && n < 3900; i++) {
+                shObject *o = v->get (i);
+                shGlyph g = o->getGlyph ();
+                n += snprintf (buf + n, sizeof buf - n, "I%c%s\t%s\n", g.mSym, o->getDescription (), vcolor (g.mColor));
+            }
+        }
+    buf[n] = 0;
+    js_vis (buf);
+}
 static bool dpy = true;   /* "display open" for the shared code */
 
 static void
@@ -742,6 +775,7 @@ shXInterface::present ()
             && !(h->mX == mCurX && h->mY == mCurY);
         int fy = target ? mCurY : heroPlaced () ? h->mY : -1;
         int fx = target ? mCurX : heroPlaced () ? h->mX : -1;
+        sendVisible ();
         js_flush (fy, fx, target ? mCurY : -1, target ? mCurX : -1);
     }
 #else
