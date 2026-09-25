@@ -278,7 +278,8 @@
 			if (fy >= 0 && (fy !== hero.y || fx !== hero.x)) { var first = hero.x < 0; hero.y = fy; hero.x = fx; scrollMap(first); }
 		},
 		vis: function (s) { RvipWM.visible(document.querySelector('#t-vis .body'), s); },
-		key: function () { return events.length ? events.shift() : -1; },
+		key: function (atCmd) { RvipWM.prompt.wait(atCmd); return events.length ? events.shift() : -1; },
+		prompt: function (s) { RvipWM.prompt.text(s); },
 		pending: function () { return events.length ? 1 : 0; },
 		requestSave: function () { saveReq = true; },   /* also for testing */
 		wantSave: function () {

@@ -217,7 +217,8 @@ EM_JS(void, js_put, (int p, int y, int x, int ch), { Module.pr.put(p, y, x, ch);
 EM_JS(void, js_tile, (int x, int y, const unsigned char *rgba), { Module.pr.tile(x, y, rgba); });
 EM_JS(void, js_popup, (int r, int c), { Module.pr.popup(r, c); });
 EM_JS(void, js_flush, (int fy, int fx, int cy, int cx), { Module.pr.flush(fy, fx, cy, cx); });
-EM_JS(int, js_key, (void), { return Module.pr.key(); });
+EM_JS(int, js_key, (int at_cmd), { return Module.pr.key(at_cmd); });
+EM_JS(void, js_prompt, (const char *s), { Module.pr.prompt(UTF8ToString(s)); });
 EM_JS(int, js_want_save, (void), { return Module.pr.wantSave(); });
 EM_JS(void, js_end, (int saved), { Module.pr.end(saved); });
 
@@ -629,6 +630,16 @@ draw_messages (shXInterface *ui, int histIdx, int wrapped, const char *hist)
             if (c.fg == 7) c.fg = 15; /* new messages bright */
             draw_text (P_MSG, old + y, x, c);
         }
+#ifdef __EMSCRIPTEN__
+    {   /* the cursor row of the log: the prompt line over the map */
+        char r[81];
+        int ly = w->cy - w->y1;
+        if (ly < 0 || ly >= live) ly = live - 1;
+        for (int x = 0; x < 80; ++x) r[x] = ly >= 0 ? (char) w->c[w->y1 + ly][x].ch : ' ';
+        r[80] = 0;
+        js_prompt (r);
+    }
+#endif
 }
 
 static void
@@ -826,7 +837,7 @@ static int
 getkey (bool wait)
 {
     for (;;) {
-        int k = js_key ();
+        int k = js_key (RvipAtPrompt);
         if (k >= 0x10000) {
             int r = k - 0x10000;
             if (r < P[P_POP].rows && popRows[r].win >= 0) {
