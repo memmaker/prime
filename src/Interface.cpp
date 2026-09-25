@@ -123,6 +123,26 @@ shInterface::vp (const char *format, va_list ap)
     }
     strbuf[buflen-1] = 0;
     debug.log ("%s", strbuf);
+    /* RVIP: a repeat of the last message becomes "message (xN)" in its log
+       row and history entry instead of a new line. */
+    static char prevmsg[LINELEN];
+    static int reps;
+    if (!mNoNewline and mLogRow and !strcmp (strbuf, prevmsg)) {
+        char fold[LINELEN + 16];
+        int y, x;
+        snprintf (fold, sizeof fold, "%s (x%d)", prevmsg, ++reps);
+        fold[LINELEN - 1] = 0;
+        strcpy (&mLogHistory[((mHistoryIdx + HISTORY_ROWS - 1) % HISTORY_ROWS) * LINELEN], fold);
+        winGetYX (kLog, &y, &x);
+        winGoToYX (kLog, y, 0);
+        setWinColor (kLog, mColor);
+        winPrint (kLog, fold);
+        setWinColor (kLog, kGray);
+        drawLog ();
+        return res;
+    }
+    if (mNoNewline) prevmsg[0] = 0;
+    else { strcpy (prevmsg, strbuf); reps = 1; }
     /* Save message to history. */
     if (mNoNewline) {
         int y, x;

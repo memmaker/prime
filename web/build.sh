@@ -19,6 +19,6 @@ em++ -O2 $EMFLAGS -std=gnu++98 -w -DNDEBUG -DNOGUI -DPRIME_X11 -Isrc -Iport \
 	--preload-file data@/prime/data \
 	--preload-file user/keymap@/prime/keymap \
 	--preload-file port/tiles.rgba@/prime/port/tiles.rgba
-cp web/index.html web/rvip-wm.js web/prime.js "$OUT/"
+cp web/index.html "$HOME/Games/rvip-tools/web/rvip-wm.js" web/prime.js "$OUT/"
 python3 web/make-help.py > "$OUT/help.html"
 ls -la "$OUT"
