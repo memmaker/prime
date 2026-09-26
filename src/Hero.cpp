@@ -3016,6 +3016,10 @@ shHero::death (shCauseOfDeath how, shCreature *killer, shObject *,
     char message[200];
     epitaph (message, 200, how, killstr, killer);
     logGame (message);
+#ifdef __EMSCRIPTEN__
+    void be_run_end (shCauseOfDeath, shCreature *, const char *);
+    be_run_end (how, killer, killstr);
+#endif
 
     if (how != kQuitGame)
         I->pause ();

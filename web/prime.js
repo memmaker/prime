@@ -10,7 +10,8 @@
 	var WIN = ['map', 'stat', 'msg', 'inv'];          /* pane -> window id */
 	var ROOT = '/prime';                            /* the game's cwd: data/, user/, score/ */
 	var DIR = ROOT + '/user';                       /* IDBFS mount: save/, config.txt, score/, layout */
-	var SAVE = DIR + '/save/player.sav', LAYOUT_FILE = DIR + '/web-layout.json';
+	var SAVE, NAME,                                 /* save/<hero name>.sav (PRIME names it) */
+		 LAYOUT_FILE = DIR + '/web-layout.json';
 	var TS = 32;                                    /* map cells arrive as 32x32 RGBA */
 	var MAP_COLS = 64, MAP_ROWS = 20, SIDE_COLS = 40;
 	/* shColor order, as the text colours of port/XUI.cpp */
@@ -406,13 +407,22 @@
 				if (err) status('Could not read saved games from IndexedDB (' + err + '). Saving may not work in this browser mode.', true);
 				['save', 'score'].forEach(function (d) { try { FS.mkdir(DIR + '/' + d); } catch (e) { } });
 				try { FS.symlink(DIR + '/score', ROOT + '/score'); } catch (e) { }
+				/* hero name = -u NAME (nameOK: <=14 printable, no slashes); a pre-name save/player.sav plays out first */
+				NAME = 'player';
+				try { FS.stat(DIR + '/save/player.sav'); } catch (e) {
+					try { NAME = localStorage.getItem('prime-name') || ''; } catch (err) { NAME = ''; }
+					if (!NAME) { NAME = (prompt('What is your name, adventurer?', '') || '').replace(/[^ -~]|[\/\\]/g, '').trim().slice(0, 14); try { if (NAME) localStorage.setItem('prime-name', NAME); } catch (err) { /* no storage */ } }
+					if (!NAME) NAME = 'player';
+				}
+				SAVE = DIR + '/save/' + NAME + '.sav';
+				Module.arguments.push('-u', NAME);   /* same array the runtime captured */
 				/* the keymaps come with the game, not from storage */
 				try { FS.unlink(DIR + '/keymap'); } catch (e) { }
 				FS.symlink(ROOT + '/keymap', DIR + '/keymap');
 				Module.removeRunDependency('idbfs');
 			});
 		}],
-		arguments: ['-u', 'player'],
+		arguments: [],
 		onRuntimeInitialized: function () {
 			running = true;
 			saveReq = true;                      /* PRIME deleted the save it loaded: write it back */

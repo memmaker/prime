@@ -222,6 +222,32 @@ EM_JS(void, js_prompt, (const char *s), { Module.pr.prompt(UTF8ToString(s)); });
 EM_JS(int, js_want_save, (void), { return Module.pr.wantSave(); });
 EM_JS(void, js_end, (int saved), { Module.pr.end(saved); });
 
+/* Run report (roguelikes-index/server/CONTRACT.md): fire-and-forget GET,
+   never throws, offline just fails silently. Negative ints are omitted. */
+EM_JS(void, js_beacon, (const char *g, const char *ev, const char *name, const char *killer, int depth, int score, int turns, int lvl), {
+    try {
+        var p = [['g', UTF8ToString(g)], ['ev', UTF8ToString(ev)], ['name', name ? UTF8ToString(name) : ''],
+                 ['killer', killer ? UTF8ToString(killer) : ''], ['depth', depth], ['score', score], ['turns', turns], ['lvl', lvl]];
+        var q = p.filter(function (a) { return a[1] !== '' && !(a[1] < 0); })
+                 .map(function (a) { return a[0] + '=' + encodeURIComponent(a[1]); }).join('&');
+        fetch('/roguelikes/beacon?' + q, { keepalive: true, mode: 'no-cors' }).catch(function () {});
+    } catch (e) {}
+});
+/* shHero::death, after logGame (mScore is what the high score table keeps) */
+void
+be_run_end (shCauseOfDeath how, shCreature *killer, const char *k)
+{
+    const char *ev = how == kWonGame ? "win" : how == kQuitGame ? "quit" : "death";
+    if (how == kWonGame or how == kQuitGame) k = NULL;
+    else if (killer and !killer->isHero ()) k = killer->myIlk ()->mName;
+    if (k and !strncmp (k, "a ", 2)) k += 2;
+    else if (k and !strncmp (k, "an ", 3)) k += 3;
+    else if (k and !strncasecmp (k, "the ", 4)) k += 4;
+    shCreature *h = Hero.cr ();
+    js_beacon ("prime", ev, h->mName, k, Level ? Level->mDLevel : -1,
+               Hero.tallyScore (), Clock / FULLTURN, h->mCLevel);
+}
+
 /* Visible window (RVIP 5b): creatures the hero sees and objects on seen
  * squares, in the game's own colours */
 EM_JS(void, js_vis, (const char *s), { if (Module.pr.vis) Module.pr.vis(UTF8ToString(s)); });
