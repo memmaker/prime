@@ -49,3 +49,8 @@ Source: https://github.com/Larzid/PRIME (shallow clone, upstream 4404414);
   (`RvipAtPrompt`, save to tmp + rename), death/quit deletes the save unless
   the player saved (`webEnd()` in `exitPRIME`). Fixed for wasm: uninit `sp`
   in Menu.cpp, function-pointer cast in `shVector::sort`, no SIGSEGV catch.
+- Prompt line (RVIP step 5 / W4, 2026-09-26): the live message row is shown in a
+  box over the map by `RvipWM.prompt` (rvip-wm.js). A key hides it only while
+  the game waits for a command, so a question stays up until answered.
+  Here: `js_prompt(r)` from `draw_messages()` in `port/XUI.cpp` (the cursor row
+  of the log, web build only), `js_key(RvipAtPrompt)`.
