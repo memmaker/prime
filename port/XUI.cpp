@@ -636,13 +636,16 @@ draw_messages (shXInterface *ui, int histIdx, int wrapped, const char *hist)
         for (int x = 0; x < 80; ++x)
             if (w->c[w->y1 + y][x].ch != ' ') live = y + 1;
     if (w->cy - w->y1 + 1 > live && (w->cx > 0)) live = w->cy - w->y1 + 1;
-    int old = q->rows - live;
-    /* History entries before the live rows (they are in it already). */
+    /* History fills from the top: the entries before the live rows (they
+       are in it already), then the live rows, then blank rows; once the
+       history is longer than the pane it scrolls. */
     int n = wrapped ? HISTORY_ROWS : histIdx;
     int skip = live;
+    int avail = n - skip > 0 ? n - skip : 0;
+    int old = q->rows - live;
+    if (avail < old) old = avail;
     for (int y = 0; y < old; ++y) {
         int k = old - y + skip; /* entries back from the newest */
-        if (k > n) { text_line (P_MSG, y, "", 8); continue; }
         int idx = (histIdx - k + HISTORY_ROWS) % HISTORY_ROWS;
         char buf[81];
         strncpy (buf, hist + idx * 80, 80);
@@ -656,6 +659,7 @@ draw_messages (shXInterface *ui, int histIdx, int wrapped, const char *hist)
             if (c.fg == 7) c.fg = 15; /* new messages bright */
             draw_text (P_MSG, old + y, x, c);
         }
+    for (int y = old + live; y < q->rows; ++y) text_line (P_MSG, y, "", 8);
 #ifdef __EMSCRIPTEN__
     {   /* the cursor row of the log: the prompt line over the map */
         char r[81];
