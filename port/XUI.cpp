@@ -885,14 +885,13 @@ getkey (bool wait)
     }
 }
 
-/* Explore asks before every step: let the page paint now and then. */
+/* Explore asks before every step (only it calls this): let the page
+   paint the step, 40 ms each, so the walk is visible. */
 bool
 x11KeyPending ()
 {
-    if (emscripten_get_now () - lastYield > 40) {
-        emscripten_sleep (0);
-        lastYield = emscripten_get_now ();
-    }
+    emscripten_sleep (40);     /* each step gets painted */
+    lastYield = emscripten_get_now ();
     return EM_ASM_INT ({ return Module.pr.pending (); });
 }
 
