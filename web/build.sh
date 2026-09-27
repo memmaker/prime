@@ -20,5 +20,9 @@ em++ -O2 $EMFLAGS -std=gnu++98 -w -DNDEBUG -DNOGUI -DPRIME_X11 -Isrc -Iport \
 	--preload-file user/keymap@/prime/keymap \
 	--preload-file port/tiles.rgba@/prime/port/tiles.rgba
 cp web/index.html web/prime.js "$OUT/"
+# text fonts: the index page's fonts/ (served at ../fonts/ next to the games)
+FONTS=${FONTS:-$HOME/Games/roguelikes-index/fonts}
+if [ -d "$FONTS" ]; then (cd "$FONTS" && ls *.woff | sed 's/\.woff$//'); fi \
+	| python3 -c 'import json,sys; print(json.dumps(sys.stdin.read().split()))' > "$OUT/fonts.json"
 python3 web/make-help.py > "$OUT/help.html"
 ls -la "$OUT"
