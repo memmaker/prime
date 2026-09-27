@@ -21,6 +21,7 @@ int RvipAutoMore = 1;           /* --More-- after 5 log lines does not wait */
 int RvipMsgs;                   /* bumped by shInterface::vp () */
 static int mode;                /* 0 off, 1 explore, 2 to '>', 3 to '<' */
 static int msgs0, reopen;
+static const int *listFg;       /* rvipList: row colours (the Inventory pane's) */
 static int listByLetter;        /* rvipList: chosen by its letter (not Enter) */
 static shMapLevel *lev;
 static unsigned char seen[MAPMAXCOLUMNS][MAPMAXROWS], visited[MAPMAXCOLUMNS][MAPMAXROWS],
@@ -76,7 +77,8 @@ rvipList (const char *title, int n, const char **text, const char **key,
                 I->setWinColor (shInterface::kMenu, kYellow, kBlack);
             } else {
                 snprintf (buf, sizeof buf, " %*s  %-*s", kw, key[i], w - kw - 3, text[i]);
-                I->setWinColor (shInterface::kMenu, i == *cur ? kBlack : kGray,
+                I->setWinColor (shInterface::kMenu, i == *cur ? kBlack
+                                : listFg && listFg[i] ? (shColor) listFg[i] : kGray,
                                 i == *cur ? kWhite : kBlack);
             }
             buf[w] = 0;
@@ -243,18 +245,22 @@ rvipInventory ()
         if (!n) { I->p ("You aren't carrying anything!"); return 0; }
         const char *text[64], *keys[64];
         static char lines[64][100], ks[64][2];
+        static int fg[64];
         h->reorganizeInventory ();
         n = mini (n, 64);
         for (i = 0; i < n; i++) {
             shObject *o = h->mInventory->get (i);
             snprintf (lines[i], 100, "%s", o->inv ());
             text[i] = lines[i];
+            fg[i] = o->getGlyph ().mColor;   /* as in the Inventory pane */
             ks[i][0] = o->mLetter; ks[i][1] = 0;
             keys[i] = ks[i];
         }
         if (cur >= n) cur = n - 1;
         int k, act;               /* 0 main, 1 menu, 2 drop, 3 examine */
+        listFg = fg;
         int pick = rvipList ("Inventory   (Enter: actions  -: drop  *: examine)", n, text, keys, &cur, &k);
+        listFg = NULL;
         act = listByLetter ? 0 : 1;   /* letter: main action; Enter/5/space: menu */
         if (pick < 0) {
             if ('+' == k) { pick = cur; act = 0; }
