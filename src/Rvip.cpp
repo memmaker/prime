@@ -171,7 +171,7 @@ shInterface::rvipStep ()
     if (RvipMsgs != msgs0 || hostileInView () || x11KeyPending ()) return kNoCommand;
     visited[hx][hy] = 1;
     if (target (hx, hy) && mode > 1)
-        return 2 == mode ? kMoveDown : kMoveUp;
+        return kNoCommand;  /* arrived: the player presses < / > again */
     memset (px, -1, sizeof px);
     px[hx][hy] = hx; py[hx][hy] = hy;
     qx[t] = hx; qy[t++] = hy;
@@ -310,7 +310,6 @@ static const MenuEntry menuEntries[] = {
     { shInterface::kExplore, "Explore automatically (any key stops)" },
     { shInterface::kMoveDown, "Go down (walks to known stairs)" },
     { shInterface::kMoveUp, "Go up (walks to known stairs)" },
-    { shInterface::kGlide, "Glide: move until something happens" },
     { shInterface::kRest, "Rest (and search)" },
     { shInterface::kNoCommand, "Fighting" },
     { shInterface::kFireWeapon, "Fire wielded weapon" },
