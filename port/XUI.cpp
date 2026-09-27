@@ -11,6 +11,7 @@
  * PRIME_DUMP=<file> (text of every pane on each refresh, for testing). */
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>   /* browser: the page (web/prime.js) draws the panes */
+#include <map>
 #else
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
@@ -257,6 +258,13 @@ static const char *vcolor (int c)
     return c >= 0 && c < (int) (sizeof pal / sizeof *pal) ? pal[c] : "";
 }
 
+/* List icons (Inventory pane, Visible window): an object's or creature's
+   tile stack, composed here like a map cell; the page caches each by key */
+EM_JS(void, js_icon, (int key, const unsigned char *rgba), { Module.pr.icon(key, rgba); });
+EM_JS(void, js_inv_icons, (const char *s), { Module.pr.invIcons(UTF8ToString(s)); });
+static int objIcon (shObject *o);
+static int creIcon (shCreature *c);
+
 static void sendVisible ()
 {
     static char buf[4096];
@@ -265,7 +273,7 @@ static void sendVisible ()
     for (int i = 0; i < Level->mCrList.count () && n < 3900; i++) {
         shCreature *c = Level->mCrList.get (i);
         if (!c || c == Hero.cr () || !Hero.cr ()->canSee (c)) continue;
-        n += snprintf (buf + n, sizeof buf - n, "M%c%s\t%s\n", c->mGlyph.mSym, c->an (), vcolor (c->mGlyph.mColor));
+        n += snprintf (buf + n, sizeof buf - n, "M%c%s\t%s\t%d\n", c->mGlyph.mSym, c->an (), vcolor (c->mGlyph.mColor), creIcon (c));
     }
     for (int x = 0; x < MAPMAXCOLUMNS; x++)
         for (int y = 0; y < MAPMAXROWS && n < 3900; y++) {
@@ -274,7 +282,7 @@ static void sendVisible ()
             for (int i = 0; i < v->count () && n < 3900; i++) {
                 shObject *o = v->get (i);
                 shGlyph g = o->getGlyph ();
-                n += snprintf (buf + n, sizeof buf - n, "I%c%s\t%s\n", g.mSym, o->getDescription (), vcolor (g.mColor));
+                n += snprintf (buf + n, sizeof buf - n, "I%c%s\t%s\t%d\n", g.mSym, o->getDescription (), vcolor (g.mColor), objIcon (o));
             }
         }
     buf[n] = 0;
@@ -680,6 +688,7 @@ draw_inventory ()
     int per = q->rows, colw;
     std::vector<std::string> lines;
     std::vector<int> fgs;   /* each item's own glyph colour */
+    std::vector<int> icons; /* web: each item's icon key */
     /* only once the hero stands on a level: inv () asks it about shops */
     if (heroPlaced () && h->mInventory) {
         static char save[64 * SHBUFLEN];
@@ -690,7 +699,13 @@ draw_inventory ()
                 shObject *o = h->mInventory->get (i);
                 if (o->mLetter != l) continue;
                 char buf[128];
+#ifdef __EMSCRIPTEN__
+                /* "a)   name": the icon goes across cols 2-4 */
+                snprintf (buf, sizeof buf, "%c)   %s", l, o->inv ());
+                icons.push_back (objIcon (o));
+#else
                 snprintf (buf, sizeof buf, "%c %s", l, o->inv ());
+#endif
                 lines.push_back (buf);
                 fgs.push_back (o->getGlyph ().mColor);
             }
@@ -705,10 +720,19 @@ draw_inventory ()
             Cell c = { ' ', 7, 0 };
             for (int x = 0; x < colw - 1; ++x) {
                 c.ch = *s ? *s++ : ' ';
-                c.fg = x == 0 ? 15 : k < fgs.size () && fgs[k] ? fgs[k] : 7;
+                c.fg = x < 2 ? 15 : k < fgs.size () && fgs[k] ? fgs[k] : 7;
                 draw_text (P_INV, y, col * colw + x, c);
             }
         }
+#ifdef __EMSCRIPTEN__
+    std::string ic;
+    for (size_t k = 0; k < icons.size () && k < (size_t) (ncol * per); ++k) {
+        char b[48];
+        snprintf (b, sizeof b, "%d,%d,%d;", (int) (k % per), (int) (k / per) * colw + 2, icons[k]);
+        ic += b;
+    }
+    js_inv_icons (ic.c_str ());
+#endif
 }
 
 /* The open pop-up windows (kTemp, kMenu, kMenuHelp), each cut to the
@@ -1845,6 +1869,50 @@ putOverlay (shObject *obj, shCache *cache)
         cache->add (21, kRowCursor, spObj);
     }*/
 }
+
+#ifdef __EMSCRIPTEN__
+/* A list icon: the tile stack composed on black, sent once per stack */
+static int
+iconKey (shCache &c)
+{
+    static std::map<std::vector<int>, int> known;
+    std::map<std::vector<int>, int>::iterator it = known.find (c.t);
+    if (it != known.end ()) return it->second;
+    int key = (int) known.size ();
+    known[c.t] = key;
+    static unsigned char buf[TS * TS * 3], rgba[TS * TS * 4];
+    memset (buf, 0, sizeof buf);
+    for (size_t i = 0; i + 3 < c.t.size (); i += 4)
+        layer (buf, c.t[i], c.t[i + 1], c.t[i + 3]);
+    for (int i = 0; i < TS * TS; ++i) {
+        rgba[i * 4] = buf[i * 3]; rgba[i * 4 + 1] = buf[i * 3 + 1];
+        rgba[i * 4 + 2] = buf[i * 3 + 2]; rgba[i * 4 + 3] = 255;
+    }
+    js_icon (key, rgba);
+    return key;
+}
+
+/* the same layers as draw () puts on the map */
+static int
+objIcon (shObject *o)
+{
+    shCache c;
+    shGlyph g = o->getGlyph ();
+    c.add (g.mTileX, g.mTileY, spObj);
+    putOverlay (o, &c);
+    return iconKey (c);
+}
+
+static int
+creIcon (shCreature *cr)
+{
+    shCache c;
+    c.add (cr->mGlyph.mTileX, cr->mGlyph.mTileY, spCre);
+    if (cr->isPet () and !cr->isHero ()) c.add (6, kRowTag2, spCre);
+    else if (cr->is (kAsleep)) c.add (1, kRowTag2, spCre);
+    return iconKey (c);
+}
+#endif
 
 /* Necklace of the Eye needs to be told both what tiles reside at given */
 void         /* (x, y) coordinate pair and what ASCII glyph to display. */

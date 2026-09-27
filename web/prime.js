@@ -95,6 +95,14 @@
 			}
 			return;
 		}
+		var ic = p === P_INV ? invIcon.cover[i] : undefined;
+		if (ic !== undefined) drawIcon(T, y, ic, y * T.cols + ic);   /* the icon's 3 cells */
+		else textCell(T, i, px, py);
+	}
+
+	/* One text cell: char | fg << 8 | bg << 12 */
+	function textCell(T, i, px, py) {
+		var c = T.ctx;
 		/* char | fg << 8 | bg << 12; a background colour means black text on it */
 		var ch = T.ch_[i], k = ch & 0xff, fg = (ch >> 8) & 15, bg = (ch >> 12) & 15;
 		c.fillStyle = PAL[bg];
@@ -105,6 +113,34 @@
 			c.fillStyle = bg ? '#000' : PAL[fg || 7];
 			c.fillText(String.fromCharCode(k), px + T.cw / 2, py + T.ch / 2 + 1);
 		}
+	}
+
+	/* List icons (the game composes them, see objIcon () in port/XUI.cpp) */
+	var icons = {};            /* key -> 32x32 canvas */
+	var invIcon = { cover: {} }; /* Inventory: cell of col 2 -> icon key; cover: cell -> col 2 */
+	/* An inventory icon: centred across cols x0..x0+2, square with side
+	 * min(2*cw, ch) (keeps its aspect), each cell draws its part clipped */
+	function drawIcon(T, y, x0, i0) {
+		var c = T.ctx, py = T.pad + y * T.ch, key = invIcon[i0], im = icons[key];
+		for (var x = x0; x < x0 + 3 && x < T.cols; x++) {
+			var px = T.pad + x * T.cw;
+			textCell(T, y * T.cols + x, px, py);
+		}
+		if (!im) return;
+		var sd = Math.min(2 * T.cw, T.ch), l = T.pad + x0 * T.cw + (3 * T.cw - sd) / 2, t = py + (T.ch - sd) / 2;
+		c.save(); c.beginPath(); c.rect(T.pad + x0 * T.cw, py, 3 * T.cw, T.ch); c.clip();
+		c.drawImage(im, l, t, sd, sd);
+		c.restore();
+	}
+	/* Visible window icon: the same tile, 16 px */
+	function visIcon(t) {
+		var im = icons[t];
+		if (!im) return null;
+		var e = document.createElement('canvas');
+		e.width = e.height = TS; e.className = 'wm-ic';
+		e.style.cssText = 'width:16px;height:16px;image-rendering:pixelated;vertical-align:middle';
+		e.getContext('2d').drawImage(im, 0, 0);
+		return e;
 	}
 
 	/* ---------- tiling layout ---------- */
@@ -284,7 +320,31 @@
 			if (panes[P_MAP] && cy >= 0) draw(P_MAP, cy, cx);
 			if (fy >= 0 && (fy !== hero.y || fx !== hero.x)) { var first = hero.x < 0; hero.y = fy; hero.x = fx; scrollMap(first); }
 		},
-		vis: function (s) { RvipWM.visible(document.querySelector('#t-vis .body'), s); },
+		vis: function (s) { RvipWM.visible(document.querySelector('#t-vis .body'), s, visIcon); },
+		icon: function (key, ptr) {
+			var cv = document.createElement('canvas');
+			cv.width = cv.height = TS;
+			cv.getContext('2d').putImageData(new ImageData(new Uint8ClampedArray(Module.HEAPU8.buffer, ptr, TS * TS * 4).slice(), TS, TS), 0, 0);
+			icons[key] = cv;
+		},
+		/* "y,x,key;..." for the rows of the Inventory pane */
+		invIcons: function (s) {
+			var T = panes[P_INV], old = invIcon, n = { cover: {} };
+			if (!T) return;
+			s.split(';').forEach(function (e) {
+				if (!e) return;
+				var f = e.split(','), i = +f[0] * T.cols + +f[1];
+				n[i] = +f[2];
+				for (var k = 0; k < 3; k++) n.cover[i + k] = +f[1];
+			});
+			invIcon = n;
+			Object.keys(old.cover).concat(Object.keys(n.cover)).forEach(function (i) {
+				i = +i;
+				var r = i - (i % T.cols);
+				if (old.cover[i] === n.cover[i] && old[r + old.cover[i]] === n[r + n.cover[i]]) return;
+				draw(P_INV, (i / T.cols) | 0, i % T.cols);
+			});
+		},
 		key: function (atCmd) { RvipWM.prompt.wait(atCmd); return events.length ? events.shift() : -1; },
 		prompt: function (s) { RvipWM.prompt.text(s); },
 		pending: function () { return events.length ? 1 : 0; },
