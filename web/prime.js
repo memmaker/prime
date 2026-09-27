@@ -173,8 +173,8 @@
 		var box;
 		if (p === P_POP) {
 			if (!rects.map) return;
-			var m = rects.map, A = areaSize();
-			box = { w: A.w - m[0] - L.tile, h: A.h - 8 };
+			var A = RvipWM.popupBox();
+			box = { w: A.w - L.tile, h: A.h };
 		} else {
 			var r = rects[WIN[p]];
 			if (!r) return;
@@ -185,7 +185,7 @@
 		var sc = Math.min(1, box.w / T.w, box.h / T.h);
 		T.cv.style.width = T.w * sc + 'px';
 		T.cv.style.height = T.h * sc + 'px';
-		if (p === P_POP) { var pop = $('pop'); pop.style.left = rects.map[0] + L.tile / 2 + 'px'; pop.style.top = rects.map[1] + 4 + 'px'; }
+		if (p === P_POP) RvipWM.popup($('pop'), { x: L.tile / 2 });
 	}
 
 	var hero = { y: -1, x: -1 }, off = { x: 0, y: 0 };
