@@ -44,9 +44,6 @@
 	.win > .t .name:hover { color: var(--text); }
 	.win > .t input { width: 100%; font: inherit; color: var(--text); background: #000; border: 1px solid var(--accent);
 		border-radius: 2px; padding: 0 3px; height: 16px; outline: none; }
-	.win > .t .zoom { flex: none; display: flex; gap: 2px; visibility: hidden; }
-	.win > .t:hover .zoom { visibility: visible; }
-	.win > .t .zoom button { padding: 0 5px; font-size: 11px; line-height: 14px; height: 16px; }
 	.win > .body { flex: 1; min-height: 0; overflow: hidden; }
 	.win canvas { display: block; }
 	#pop { position: absolute; z-index: 3; background: #000; border: 1px solid var(--dim); box-shadow: 0 6px 24px rgba(0,0,0,.7); }
@@ -138,6 +135,7 @@
 </div>
 
 <script src="../rvip-wm.js"></script>
+<script src="../rvip-app.js"></script>
 <script src="prime.js"></script>
 <script src="prime-core.js"></script>
 </body>
