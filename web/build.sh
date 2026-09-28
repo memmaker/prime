@@ -8,7 +8,7 @@ rm -rf "$OUT" && mkdir -p "$OUT"
 [ -f port/tiles.rgba ] || python3 port/mktiles.py
 SRCS=$(ls src/*.cpp | grep -v -e NEUI -e NCUI -e CrtUI)
 # port/XUI.cpp's __EMSCRIPTEN__ part hands the panes to web/prime.js
-em++ -O2 $EMFLAGS -std=gnu++98 -w -DNDEBUG -DNOGUI -DPRIME_X11 -Isrc -Iport \
+em++ -O2 $EMFLAGS -std=gnu++98 -DNDEBUG -DNOGUI -DPRIME_X11 -Isrc -Iport \
 	$SRCS src/gen/Lore.cpp port/XUI.cpp \
 	-o "$OUT/prime-core.js" \
 	-sASYNCIFY -sASYNCIFY_STACK_SIZE=131072 -sSTACK_SIZE=2097152 \
