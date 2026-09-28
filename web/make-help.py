@@ -35,7 +35,7 @@ SAVING = '''<ul>
 WEB = '''<ul>
 <li><strong>Windows:</strong> the tiled map with Messages (with history) below it; Status and Inventory on the right. Menus, lists and help pop up over the map; click a row to choose it.</li>
 <li><strong>Resize windows</strong> by dragging the gaps between them; a text window's contents shrink to fit when it is too small. <em>Reset windows</em> puts everything back.</li>
-<li><strong>Zoom:</strong> <em>Zoom −</em> / <em>Zoom +</em> change the size of the map tiles. The map scrolls to keep you (or the targeting cursor) in view. Hover over a text window's title to show its <em>A−</em> / <em>A+</em> buttons.</li>
+<li><strong>Zoom:</strong> <em>A−</em> / <em>A+</em> on the Map title bar (shown on hover) change the size of the map tiles. The map scrolls to keep you (or the targeting cursor) in view. Hover over a text window's title to show its <em>A−</em> / <em>A+</em> buttons.</li>
 <li><strong>Keys:</strong> the arrow keys, the numeric keypad or <kbd>1</kbd>–<kbd>9</kbd> move you (vi keys in the laptop keymap). The first start asks for a keymap; <kbd>Esc</kbd>, <em>Set options</em> changes it later.</li>
 <li>No sound: PRIME has none.</li>
 <li>Browsers keep a few shortcuts for themselves (<kbd>Ctrl+W</kbd>, <kbd>Ctrl+T</kbd>, <kbd>Ctrl+N</kbd>, and <kbd>Cmd</kbd> shortcuts on a Mac), so those never reach the game. In the laptop keymap that includes some Ctrl+direction shots: use <kbd>f</kbd> and a direction instead.</li>
