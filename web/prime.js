@@ -401,6 +401,13 @@
 	app = RvipApp({ name: 'prime', save: function () { return hasSave() ? SAVE : null; }, clear: clearSave, put: putSave,
 		exportName: function () { return 'prime.sav'; },
 		flush: function (done) { saveReq = true; setTimeout(done, 1500); } });   /* the game saves at its next wantSave() poll */
+	/* the player's name: asked once, kept in this game's IndexedDB folder (never localStorage) */
+	function askName(max, bad) {
+		var FS = Module.FS, f = DIR + '/web-name', n = '';
+		try { n = FS.readFile(f, { encoding: 'utf8' }); } catch (e) { }
+		if (!n) { n = (prompt('What is your name, adventurer?', '') || '').replace(bad, '').trim().slice(0, max); if (n) { FS.writeFile(f, n); app.sync(); } }
+		return n;
+	}
 	window.Module = {
 		pr: pr,
 		preRun: [function () {
@@ -416,8 +423,7 @@
 				/* hero name = -u NAME (nameOK: <=14 printable, no slashes); a pre-name save/player.sav plays out first */
 				NAME = 'player';
 				try { FS.stat(DIR + '/save/player.sav'); } catch (e) {
-					try { NAME = localStorage.getItem('prime-name') || ''; } catch (err) { NAME = ''; }
-					if (!NAME) { NAME = (prompt('What is your name, adventurer?', '') || '').replace(/[^ -~]|[\/\\]/g, '').trim().slice(0, 14); try { if (NAME) localStorage.setItem('prime-name', NAME); } catch (err) { /* no storage */ } }
+					NAME = askName(14, /[^ -~]|[\/\\]/g);
 					if (!NAME) NAME = 'player';
 				}
 				SAVE = DIR + '/save/' + NAME + '.sav';
