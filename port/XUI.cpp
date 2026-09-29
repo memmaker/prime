@@ -22,6 +22,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <vector>
+#include <string>
 
 #include "Interface.h"
 #include "Hero.h"
@@ -214,7 +215,9 @@ load_sheet ()
 
 #ifdef __EMSCRIPTEN__
 EM_JS(void, js_init, (int p, int c, int r), { Module.pr.init(p, c, r); });
-EM_JS(void, js_put, (int p, int y, int x, int ch), { Module.pr.put(p, y, x, ch); });
+/* text panes: one trimmed row with colour runs, and the rows in use (RVIP W0 rule 6) */
+EM_JS(void, js_line, (int p, int y, const char *s, int tile), { Module.pr.line(p, y, UTF8ToString(s), '', tile); });
+EM_JS(void, js_rows, (int p, int n), { Module.pr.rows(p, n); });
 EM_JS(void, js_tile, (int x, int y, const unsigned char *rgba), { Module.pr.tile(x, y, rgba); });
 EM_JS(void, js_popup, (int r, int c), { Module.pr.popup(r, c); });
 EM_JS(void, js_flush, (int fy, int fx, int cy, int cx), { Module.pr.flush(fy, fx, cy, cx); });
@@ -259,9 +262,8 @@ static const char *vcolor (int c)
 }
 
 /* List icons (Inventory pane, Visible window): an object's or creature's
-   tile stack, composed here like a map cell; the page caches each by key */
-EM_JS(void, js_icon, (int key, const unsigned char *rgba), { Module.pr.icon(key, rgba); });
-EM_JS(void, js_inv_icons, (const char *s), { Module.pr.invIcons(UTF8ToString(s)); });
+   tile stack as sprite layers of the tile sheet (CSS sprites), sent once per stack */
+EM_JS(void, js_icon, (int key, const char *layers), { Module.pr.icon(key, UTF8ToString(layers)); });
 static int objIcon (shObject *o);
 static int creIcon (shCreature *c);
 
@@ -289,6 +291,9 @@ static void sendVisible ()
     js_vis (buf);
 }
 static bool dpy = true;   /* "display open" for the shared code */
+/* the text rows the page has (web_line below) */
+static std::vector<std::string> sent[NPANES];
+static int sentRows[NPANES];
 
 static void
 open_display ()
@@ -320,6 +325,8 @@ popup (int rows, int cols)
     }
     if (q->cols == cols && q->rows == rows) return;
     js_popup (rows, cols);    /* a blank pane of that size */
+    sent[P_POP].clear ();
+    sentRows[P_POP] = 0;
     q->cols = cols;
     q->rows = rows;
     q->shown.assign (cols * rows, Cell ());
@@ -473,9 +480,7 @@ draw_text (int p, int y, int x, Cell c)
     Cell &s = q->shown[y * q->cols + x];
     if (s.ch == c.ch && s.fg == c.fg && s.bg == c.bg) return;
     s = c;
-#ifdef __EMSCRIPTEN__
-    js_put (p, y, x, (unsigned char) c.ch | (c.fg & 15) << 8 | (c.bg & 15) << 12);
-#else
+#ifndef __EMSCRIPTEN__
     int px = q->pad + x * q->cw, py = q->pad + y * q->ch;
     int fg = c.fg & 15, bg = c.bg & 15;
     if (bg) fg = 0; /* reverse video: black text on the colour */
@@ -502,6 +507,82 @@ text_line (int p, int y, const char *s, int fg)
         draw_text (p, y, x, c);
     }
 }
+
+#ifdef __EMSCRIPTEN__
+/* The page gets each text pane as rows: trimmed, colours as runs
+   "\x05[*]#fg[/#bg]" .. "\x06" (default grey needs none, * = bold as the
+   X11 side draws 14/15), a background means black text on it; only
+   changed rows are sent, then the rows in use. */
+
+static void
+web_line (int p, int y, const std::string &s, int tile)
+{
+    std::vector<std::string> &v = sent[p];
+    char t[16];
+    snprintf (t, sizeof t, "\t%d", tile);
+    std::string k = s + t;
+    if ((int) v.size () <= y) v.resize (y + 1, "\t?");
+    if (v[y] == k) return;
+    v[y] = k;
+    js_line (p, y, s.c_str (), tile);
+}
+
+static void
+web_rows (int p, int n)
+{
+    if (sentRows[p] == n) return;
+    sentRows[p] = n;
+    js_rows (p, n);
+}
+
+static void
+hexcol (char *b, int i)
+{
+    sprintf (b, "#%02x%02x%02x", tpal[i & 15][0], tpal[i & 15][1], tpal[i & 15][2]);
+}
+
+static std::string
+run_text (const Cell *c, int n)
+{
+    std::string s;
+    int open = -1; /* fg | bg << 4 of the open run, 7: none */
+    while (n > 0 && (c[n - 1].ch == ' ' || !c[n - 1].ch) && !c[n - 1].bg) --n;
+    for (int x = 0; x < n; ++x) {
+        int fg = c[x].fg & 15, bg = c[x].bg & 15, k;
+        if (bg) fg = 0;
+        else if (!fg) fg = 7;
+        k = fg | bg << 4;
+        if (k != open) {
+            if (open >= 0 && open != 7) s += '\x06';
+            if (k != 7) {
+                char b[24];
+                s += '\x05';
+                if (!bg && fg >= 14) s += '*';
+                hexcol (b, fg); s += b;
+                if (bg) { s += '/'; hexcol (b, bg); s += b; }
+            }
+            open = k;
+        }
+        unsigned char ch = c[x].ch;
+        s += ch >= 32 && ch < 127 ? (char) ch : ' ';
+    }
+    if (open >= 0 && open != 7) s += '\x06';
+    return s;
+}
+
+static void
+web_pane (int p)
+{
+    struct pane *q = &P[p];
+    int used = 0;
+    for (int y = 0; y < q->rows; ++y) {
+        std::string s = run_text (&q->shown[y * q->cols], q->cols);
+        web_line (p, y, s, -1);
+        if (!s.empty ()) used = y + 1;
+    }
+    web_rows (p, used);
+}
+#endif
 
 static void
 blend_tile (unsigned char *buf, int tx, int ty, unsigned long col, int mult)
@@ -533,22 +614,31 @@ vga (int i)
     return (unsigned long) pal[i & 15][0] << 16 | pal[i & 15][1] << 8 | pal[i & 15][2];
 }
 
-/* Mirrors tileat () in src/lua/prime.lua. */
+/* Mirrors tileat () in src/lua/prime.lua: the sheet tile, colour and
+   mode (1 = multiply, 0 = tint) of one layer. */
+static void
+layer_spec (int x, int y, int rc, int *tx, int *ty, unsigned long *col, int *mult)
+{
+    extern shFlavor Flavors[];
+    *tx = x; *ty = y; *col = rc & 0xFFFFFF; *mult = 0;
+    if ((y == 2 || (y >= kRowLittleA && y < kRowBigA + 26)) && x >= 24 && x <= 39) {
+        /* Monster without a tile: its letter in its colour. */
+        *tx = 0; *col = vga (x - 24) | (x == 24 ? 0x010101 : 0); *mult = 1;
+    } else if (y == kRowGrenade && x >= 20) {
+        shFlavor *fl = &Flavors[kFFirstGrenade + x - 20];
+        *tx = fl->mVague.mGlyph.mTileX; *col = vga (fl->mAppearance.mGlyph.mColor); *mult = 1;
+    } else if (y == kRow4DirAtt0 && x >= 24 && x <= 32) {
+        *tx = x - 23; *col = 0xFF0000;
+    }
+}
+
 static void
 layer (unsigned char *buf, int x, int y, int rc)
 {
-    extern shFlavor Flavors[];
-    if ((y == 2 || (y >= kRowLittleA && y < kRowBigA + 26)) && x >= 24 && x <= 39) {
-        /* Monster without a tile: its letter in its colour. */
-        blend_tile (buf, 0, y, vga (x - 24) | (x == 24 ? 0x010101 : 0), 1);
-    } else if (y == kRowGrenade && x >= 20) {
-        shFlavor *fl = &Flavors[kFFirstGrenade + x - 20];
-        blend_tile (buf, fl->mVague.mGlyph.mTileX, y, vga (fl->mAppearance.mGlyph.mColor), 1);
-    } else if (y == kRow4DirAtt0 && x >= 24 && x <= 32) {
-        blend_tile (buf, x - 23, y, 0xFF0000, 0);
-    } else {
-        blend_tile (buf, x, y, rc & 0xFFFFFF, 0);
-    }
+    int tx, ty, mult;
+    unsigned long col;
+    layer_spec (x, y, rc, &tx, &ty, &col, &mult);
+    blend_tile (buf, tx, ty, col, mult);
 }
 
 /* One map cell: the layers of its tile stack, each alpha-blended over
@@ -698,10 +788,17 @@ draw_inventory ()
             for (int i = 0; i < h->mInventory->count (); ++i) {
                 shObject *o = h->mInventory->get (i);
                 if (o->mLetter != l) continue;
-                char buf[128];
+                char buf[200];
 #ifdef __EMSCRIPTEN__
-                /* "a)   name": the icon goes across cols 2-4 */
-                snprintf (buf, sizeof buf, "%c)   %s", l, o->inv ());
+                /* a list row: "a) name", the letter bright, the name in the
+                   item's colour; the icon goes before it */
+                {
+                    char c1[8], c2[8];
+                    int fg = o->getGlyph ().mColor;
+                    hexcol (c1, 15);
+                    hexcol (c2, fg ? fg : 7);
+                    snprintf (buf, sizeof buf, "\x05*%s%c)\x06 \x05%s%s\x06", c1, l, c2, o->inv ());
+                }
                 icons.push_back (objIcon (o));
 #else
                 snprintf (buf, sizeof buf, "%c %s", l, o->inv ());
@@ -711,6 +808,12 @@ draw_inventory ()
             }
         GetBufRestore (save, n);
     }
+#ifdef __EMSCRIPTEN__
+    for (size_t k = 0; k < lines.size (); ++k) web_line (P_INV, k, lines[k], icons[k]);
+    web_rows (P_INV, lines.size ());
+    (void) per; (void) colw;
+    return;
+#endif
     int ncol = (int) lines.size () > per ? 2 : 1;
     colw = q->cols / ncol;
     for (int col = 0; col < ncol; ++col)
@@ -724,15 +827,6 @@ draw_inventory ()
                 draw_text (P_INV, y, col * colw + x, c);
             }
         }
-#ifdef __EMSCRIPTEN__
-    std::string ic;
-    for (size_t k = 0; k < icons.size () && k < (size_t) (ncol * per); ++k) {
-        char b[48];
-        snprintf (b, sizeof b, "%d,%d,%d;", (int) (k % per), (int) (k / per) * colw + 2, icons[k]);
-        ic += b;
-    }
-    js_inv_icons (ic.c_str ());
-#endif
 }
 
 /* The open pop-up windows (kTemp, kMenu, kMenuHelp), each cut to the
@@ -836,6 +930,9 @@ shXInterface::present ()
     draw_inventory ();
     draw_popup (this);
 #ifdef __EMSCRIPTEN__
+    web_pane (P_STATUS);
+    web_pane (P_MSG);
+    if (P[P_POP].rows) web_pane (P_POP);
     {
         shCreature *h = Hero.cr ();
         bool target = mCurX < MAPMAXCOLUMNS && mCurY < MAPMAXROWS && h && heroPlaced ()
@@ -931,6 +1028,7 @@ webAutosave ()
     snprintf (tmp, sizeof tmp, "%s.tmp", path);
     unlink (tmp);
     if (0 == saveGame (tmp)) rename (tmp, path);
+    UI->saveOptions ();    /* the keymap choice: native PRIME writes it only on exit */
     EM_ASM ({ Module.pr.saved (); });
 }
 
@@ -1078,10 +1176,11 @@ shXInterface::shXInterface ()
     open_display ();
     pane_init (P_MAP, viewCols, MAPMAXROWS);
     pane_init (P_STATUS, 16, MAPMAXROWS);
-    pane_init (P_MSG, 80, 11);
 #ifdef __EMSCRIPTEN__
+    pane_init (P_MSG, 80, 200);  /* history; the page scrolls it */
     pane_init (P_INV, 40, 26);  /* the page's layout: inventory under Status */
 #else
+    pane_init (P_MSG, 80, 11);
     {
         int x, y;
         place (P_INV, &x, &y);
@@ -1871,7 +1970,8 @@ putOverlay (shObject *obj, shCache *cache)
 }
 
 #ifdef __EMSCRIPTEN__
-/* A list icon: the tile stack composed on black, sent once per stack */
+/* A list icon: its tile stack as "tx,ty[,#rrggbb];..." (colour: a
+   multiplied layer), sent once per stack */
 static int
 iconKey (shCache &c)
 {
@@ -1880,15 +1980,17 @@ iconKey (shCache &c)
     if (it != known.end ()) return it->second;
     int key = (int) known.size ();
     known[c.t] = key;
-    static unsigned char buf[TS * TS * 3], rgba[TS * TS * 4];
-    memset (buf, 0, sizeof buf);
-    for (size_t i = 0; i + 3 < c.t.size (); i += 4)
-        layer (buf, c.t[i], c.t[i + 1], c.t[i + 3]);
-    for (int i = 0; i < TS * TS; ++i) {
-        rgba[i * 4] = buf[i * 3]; rgba[i * 4 + 1] = buf[i * 3 + 1];
-        rgba[i * 4 + 2] = buf[i * 3 + 2]; rgba[i * 4 + 3] = 255;
+    std::string s;
+    for (size_t i = 0; i + 3 < c.t.size (); i += 4) {
+        int tx, ty, mult;
+        unsigned long col;
+        char b[40];
+        layer_spec (c.t[i], c.t[i + 1], c.t[i + 3], &tx, &ty, &col, &mult);
+        if (mult) snprintf (b, sizeof b, "%d,%d,#%06lx;", tx, ty, col);
+        else snprintf (b, sizeof b, "%d,%d;", tx, ty);
+        s += b;
     }
-    js_icon (key, rgba);
+    js_icon (key, s.c_str ());
     return key;
 }
 

@@ -20,6 +20,7 @@ em++ -O2 $EMFLAGS -std=gnu++98 -DNDEBUG -DNOGUI -DPRIME_X11 -Isrc -Iport \
 	--preload-file user/keymap@/prime/keymap \
 	--preload-file port/tiles.rgba@/prime/port/tiles.rgba
 cp web/index.html web/prime.js "$OUT/"
+cp port/tiles.png "$OUT/tiles.png"   # list icons: CSS sprites
 # text fonts: the index page's fonts/ (served at ../fonts/ next to the games)
 FONTS=${FONTS:-$HOME/Games/roguelikes-index/fonts}
 if [ -d "$FONTS" ]; then (cd "$FONTS" && ls *.woff | sed 's/\.woff$//'); fi \

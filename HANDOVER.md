@@ -54,3 +54,13 @@ Source: https://github.com/Larzid/PRIME (shallow clone, upstream 4404414);
   the game waits for a command, so a question stays up until answered.
   Here: `js_prompt(r)` from `draw_messages()` in `port/XUI.cpp` (the cursor row
   of the log, web build only), `js_key(RvipAtPrompt)`.
+- Text windows as HTML (RVIP W0 rule 6, 2026-09-29): `web_pane()` in
+  `port/XUI.cpp` sends Status, Messages (200-row history) and the pop-up as
+  trimmed rows (`js_line`: colour runs `\x05[*]#fg[/#bg]`..`\x06`, reverse
+  = black on the colour) plus rows in use (`js_rows`); Inventory is one list
+  row per item with its icon. List icons are the tile stack as CSS sprite
+  layers of `tiles.png` (copied into dist), sized in em; letter/grenade
+  recolours are a `multiply` layer masked to the tile (`layer_spec()`).
+  The map canvas holds 32 px cells, the zoom is its CSS size (no off-screen
+  canvas). Autosave also writes `config.txt` (the keymap choice was lost on
+  reload: native PRIME saves options only on exit).
