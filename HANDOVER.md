@@ -1,10 +1,10 @@
-# PRIME 2.5a — RVIP import (2026-09-25)
+# PRIME 2.5a — RVIP port
 
 Case O (C++, own UI layer `shInterface` with NCurses and NotEye frontends).
 Source: https://github.com/Larzid/PRIME (shallow clone, upstream 4404414);
 `git log`: upstream, then the port.
 
-- Build: `make -f port/Makefile -j8` → `./prime` (objects in `port/obj`).
+- Native (X11, for testing): `make -f port/Makefile -j8` → `./prime` (objects in `port/obj`).
   Needs `brew install libsigsegv`; XQuartz for X11/Xft. Data tables:
   `make -f port/Makefile gen` (m4 + `tablemk`, built from `src/tablemk` with
   bison/flex/fpc) and `lore` (encyclopedia). The committed `obj/*.o` and
@@ -41,7 +41,7 @@ Source: https://github.com/Larzid/PRIME (shallow clone, upstream 4404414);
 - Tested (ASan clean): new game, explore incl. doors/items/locked doors/
   monsters, `>` walk, Enter menu, inventory examine/wield via cursor, item
   prompt cursor, clicks, help, save → restore (status + pack identical),
-  quit. Not done: sound (6b).
+  quit.
 - Web: `web/build.sh` (em++, Asyncify, IDBFS) → `web/dist`, `web/deploy.sh`
   → https://ruzzoli.de/roguelikes/prime/. `__EMSCRIPTEN__` backend in
   XUI.cpp (js_put/js_tile/js_popup/js_flush/js_key). Saves under
@@ -49,18 +49,17 @@ Source: https://github.com/Larzid/PRIME (shallow clone, upstream 4404414);
   (`RvipAtPrompt`, save to tmp + rename), death/quit deletes the save unless
   the player saved (`webEnd()` in `exitPRIME`). Fixed for wasm: uninit `sp`
   in Menu.cpp, function-pointer cast in `shVector::sort`, no SIGSEGV catch.
-- Prompt line (RVIP step 5 / W4, 2026-09-26): the live message row is shown in a
-  box over the map by `RvipWM.prompt` (rvip-wm.js). A key hides it only while
-  the game waits for a command, so a question stays up until answered.
-  Here: `js_prompt(r)` from `draw_messages()` in `port/XUI.cpp` (the cursor row
-  of the log, web build only), `js_key(RvipAtPrompt)`.
-- Text windows as HTML (RVIP W0 rule 6, 2026-09-29): `web_pane()` in
-  `port/XUI.cpp` sends Status, Messages (200-row history) and the pop-up as
-  trimmed rows (`js_line`: colour runs `\x05[*]#fg[/#bg]`..`\x06`, reverse
-  = black on the colour) plus rows in use (`js_rows`); Inventory is one list
-  row per item with its icon. List icons are the tile stack as CSS sprite
-  layers of `tiles.png` (copied into dist), sized in em; letter/grenade
-  recolours are a `multiply` layer masked to the tile (`layer_spec()`).
-  The map canvas holds 32 px cells, the zoom is its CSS size (no off-screen
-  canvas). Autosave also writes `config.txt` (the keymap choice was lost on
-  reload: native PRIME saves options only on exit).
+- Prompt line: `js_prompt(r)` from `draw_messages()` in `port/XUI.cpp` (the
+  cursor row of the log, web build only), `js_key(RvipAtPrompt)`.
+- Text windows as HTML: `web_pane()` in `port/XUI.cpp` sends Status, Messages
+  (200-row history) and the pop-up as trimmed rows (`js_line`: colour runs
+  `\x05[*]#fg[/#bg]`..`\x06`, reverse = black on the colour) plus rows in use
+  (`js_rows`); Inventory is one list row per item with its icon. List icons
+  are the tile stack as CSS sprite layers of `tiles.png` (copied into dist),
+  sized in em; letter/grenade recolours are a `multiply` layer masked to the
+  tile (`layer_spec()`). The map canvas holds 32 px cells, the zoom is its CSS
+  size. Autosave also writes `config.txt` (native PRIME saves options only on
+  exit).
+
+## Open
+- Sound: Stage 6 web search for upstream audio not done/noted yet.
