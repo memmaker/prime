@@ -186,7 +186,7 @@
 			}
 		} catch (err) { /* nothing saved yet */ }
 		L = d;
-		$('sel-font').value = L.face || '';   /* if fonts.json came first */
+		$('sel-font').value = L.face || '';   /* if the font list came first */
 		loadFace(L.face);
 	}
 
@@ -422,9 +422,9 @@
 	document.addEventListener('keydown', onKey);
 	document.addEventListener('DOMContentLoaded', function () {
 		RvipWM.dropdown($('btn-file'), $('menu-file'));
-		fetch('fonts.json').then(function (r) { return r.json(); }).then(function (list) {
+		RvipWM.fonts.then(function (list) {
 			var sel = $('sel-font');
-			list.forEach(function (n) { var o = document.createElement('option'); o.value = n; o.textContent = n.replace(/^Web(Plus|437)_/, '').replace(/_/g, ' '); sel.appendChild(o); });
+			RvipWM.fontOptions(sel);
 			sel.value = (L && L.face) || '';
 		}).catch(function () { });
 		$('sel-font').onchange = function () { if (!L) return; L.face = this.value; saveLayout(); loadFace(this.value, true); this.blur(); };
